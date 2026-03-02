@@ -62,6 +62,27 @@ bun run dev
 bun run build
 ```
 
+## Структура (планируемая)
+
+src/
+├── components/
+│ ├── ui/ # shadcn/ui (уже есть)
+│ ├── PortfolioTable.tsx
+│ ├── RebalanceTable.tsx
+│ ├── PortfolioChart.tsx
+│ └── Header.tsx
+├── store/
+│ └── portfolioStore.ts # Zustand
+├── services/
+│ ├── yahooFinance.ts # котировки акций
+│ └── frankfurter.ts # курсы валют
+├── lib/
+│ ├── rebalance.ts # логика ребалансировки
+│ ├── utils.ts # shadcn утилиты (уже есть)
+│ └── types.ts # TypeScript типы
+├── App.tsx
+└── main.tsx
+
 ## Лицензия
 
 MIT
