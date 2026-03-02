@@ -1,35 +1,43 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { Header } from "@/components/Header";
+import { PortfolioTable } from "@/components/PortfolioTable";
+import { RebalanceTable } from "@/components/RebalanceTable";
+import { PortfolioChart } from "@/components/PortfolioChart";
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div className="min-h-screen bg-background">
+      <Header />
+
+      <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+        {/* Top section: table + chart */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-6">
+          <section>
+            <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+              Портфель
+            </h2>
+            <PortfolioTable />
+          </section>
+
+          <section>
+            <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+              Структура
+            </h2>
+            <PortfolioChart />
+          </section>
+        </div>
+
+        <hr className="border-border" />
+
+        {/* Rebalance section */}
+        <section>
+          <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+            Ребалансировка
+          </h2>
+          <RebalanceTable />
+        </section>
+      </main>
+    </div>
+  );
 }
 
-export default App
+export default App;
