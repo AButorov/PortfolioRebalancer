@@ -72,3 +72,9 @@ export interface PriceMap {
 export interface RateMap {
   [currency: string]: number; // rate to baseCurrency
 }
+
+export interface TickerPrice {
+  ticker: string;
+  price: number; // в валюте инструмента
+  currency: string;
+}
