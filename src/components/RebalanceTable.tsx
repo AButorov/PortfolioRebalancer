@@ -1,8 +1,9 @@
 import { usePortfolioStore } from "@/store/portfolioStore";
+import { useSettingsStore } from "@/store/settingsStore";
 import { ArrowUpRight, ArrowDownLeft, Minus } from "lucide-react";
 
-function fmt(value: number, currency: string): string {
-  return new Intl.NumberFormat("ru-RU", {
+function fmt(value: number, currency: string, locale: string): string {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     minimumFractionDigits: 0,
@@ -10,8 +11,8 @@ function fmt(value: number, currency: string): string {
   }).format(value);
 }
 
-function fmtNum(value: number): string {
-  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(
+function fmtNum(value: number, locale: string): string {
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(
     value,
   );
 }
@@ -24,11 +25,12 @@ function getAction(diff: number, threshold = 0.5): Action {
 }
 
 function ActionBadge({ action }: { action: Action }) {
+  const { t } = useSettingsStore();
   if (action === "hold") {
     return (
       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
         <Minus className="h-3 w-3" />
-        Держать
+        {t.hold}
       </span>
     );
   }
@@ -36,19 +38,20 @@ function ActionBadge({ action }: { action: Action }) {
     return (
       <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
         <ArrowUpRight className="h-3.5 w-3.5" />
-        Купить
+        {t.buy}
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 text-xs text-red-500 font-medium">
       <ArrowDownLeft className="h-3.5 w-3.5" />
-      Продать
+      {t.sell}
     </span>
   );
 }
 
 function DriftBadge({ drift }: { drift: number }) {
+  const { t } = useSettingsStore();
   const color =
     drift < 5
       ? "border-green-500 text-green-600 dark:text-green-400"
@@ -57,12 +60,12 @@ function DriftBadge({ drift }: { drift: number }) {
         : "border-red-500 text-red-500";
 
   const label =
-    drift < 5 ? "в норме" : drift < 10 ? "рассмотреть" : "ребалансировать";
+    drift < 5 ? t.driftNormal : drift < 10 ? t.driftConsider : t.driftRebalance;
 
   return (
     <span
       className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full border ${color}`}
-      title="Portfolio Drift — доля портфеля, которую нужно переложить для достижения целевых весов"
+      title={t.driftTitle}
     >
       <span className="tabular-nums font-medium">
         Drift {drift.toFixed(1)}%
@@ -75,13 +78,14 @@ function DriftBadge({ drift }: { drift: number }) {
 export function RebalanceTable() {
   const { rebalanceResult, portfolio, fetchStatus, fetchError } =
     usePortfolioStore();
+  const { t } = useSettingsStore();
   const baseCurrency = portfolio.baseCurrency;
 
   if (fetchStatus === "loading") {
     return (
       <div className="flex items-center justify-center py-8 text-xs text-muted-foreground gap-2">
         <div className="h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
-        Загрузка данных...
+        {t.loadingData}
       </div>
     );
   }
@@ -89,7 +93,7 @@ export function RebalanceTable() {
   if (fetchStatus === "error") {
     return (
       <div className="py-4 text-xs text-destructive">
-        Ошибка загрузки: {fetchError}
+        {t.loadError} {fetchError}
       </div>
     );
   }
@@ -97,7 +101,7 @@ export function RebalanceTable() {
   if (!rebalanceResult) {
     return (
       <div className="py-8 text-center text-xs text-muted-foreground">
-        Нажмите «Обновить» чтобы загрузить котировки
+        {t.clickRefreshHint}
       </div>
     );
   }
@@ -106,12 +110,11 @@ export function RebalanceTable() {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="text-xs text-muted-foreground">
-          Итого:{" "}
+          {t.total}{" "}
           <span className="text-foreground font-medium">
-            {fmt(totalValueBase, baseCurrency)}
+            {fmt(totalValueBase, baseCurrency, t.locale)}
           </span>
         </div>
         <DriftBadge drift={drift} />
@@ -123,24 +126,21 @@ export function RebalanceTable() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Тикер
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Сейчас
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Целевое
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Разница
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Сумма
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Действие
-                </th>
+                {[
+                  t.ticker,
+                  t.current,
+                  t.target,
+                  t.diff,
+                  t.amount,
+                  t.action,
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="px-3 py-2 text-left text-xs font-medium text-muted-foreground"
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -155,10 +155,10 @@ export function RebalanceTable() {
                       {rec.ticker}
                     </td>
                     <td className="px-3 py-2.5 text-xs text-muted-foreground tabular-nums">
-                      {fmtNum(rec.currentQuantity)} шт.
+                      {fmtNum(rec.currentQuantity, t.locale)} {t.pieces}
                     </td>
                     <td className="px-3 py-2.5 text-xs tabular-nums">
-                      {fmtNum(rec.targetQuantity)} шт.
+                      {fmtNum(rec.targetQuantity, t.locale)} {t.pieces}
                     </td>
                     <td className="px-3 py-2.5 text-xs tabular-nums">
                       <span
@@ -171,12 +171,16 @@ export function RebalanceTable() {
                         }
                       >
                         {rec.diff > 0 ? "+" : ""}
-                        {fmtNum(rec.diff)} шт.
+                        {fmtNum(rec.diff, t.locale)} {t.pieces}
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-xs tabular-nums text-muted-foreground">
                       {rec.tradeValueBase !== null
-                        ? fmt(Math.abs(rec.tradeValueBase), baseCurrency)
+                        ? fmt(
+                            Math.abs(rec.tradeValueBase),
+                            baseCurrency,
+                            t.locale,
+                          )
                         : "—"}
                     </td>
                     <td className="px-3 py-2.5">
@@ -196,21 +200,16 @@ export function RebalanceTable() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Валюта
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Сейчас
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Целевое
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Разница
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Действие
-                </th>
+                {[t.currency, t.current, t.target, t.diff, t.action].map(
+                  (h) => (
+                    <th
+                      key={h}
+                      className="px-3 py-2 text-left text-xs font-medium text-muted-foreground"
+                    >
+                      {h}
+                    </th>
+                  ),
+                )}
               </tr>
             </thead>
             <tbody>
@@ -225,10 +224,10 @@ export function RebalanceTable() {
                       {rec.currency}
                     </td>
                     <td className="px-3 py-2.5 text-xs text-muted-foreground tabular-nums">
-                      {fmtNum(rec.currentAmount)}
+                      {fmtNum(rec.currentAmount, t.locale)}
                     </td>
                     <td className="px-3 py-2.5 text-xs tabular-nums">
-                      {fmtNum(rec.targetAmount)}
+                      {fmtNum(rec.targetAmount, t.locale)}
                     </td>
                     <td className="px-3 py-2.5 text-xs tabular-nums">
                       <span
@@ -241,7 +240,7 @@ export function RebalanceTable() {
                         }
                       >
                         {rec.diff > 0 ? "+" : ""}
-                        {fmtNum(rec.diff)}
+                        {fmtNum(rec.diff, t.locale)}
                       </span>
                     </td>
                     <td className="px-3 py-2.5">

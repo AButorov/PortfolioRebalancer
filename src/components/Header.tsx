@@ -1,6 +1,14 @@
 import { useRef, useState } from "react";
-import { RefreshCw, Upload, Download, TrendingUp } from "lucide-react";
+import {
+  RefreshCw,
+  Upload,
+  Download,
+  TrendingUp,
+  Sun,
+  Moon,
+} from "lucide-react";
 import { usePortfolioStore } from "@/store/portfolioStore";
+import { useSettingsStore } from "@/store/settingsStore";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "RUB", "CNY", "JPY", "TRY", "CHF"];
 
@@ -14,6 +22,7 @@ export function Header() {
     fetchStatus,
     lastUpdated,
   } = usePortfolioStore();
+  const { theme, lang, t, toggleTheme, toggleLang } = useSettingsStore();
 
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileKey, setFileKey] = useState(0);
@@ -43,7 +52,7 @@ export function Header() {
           {/* Last updated */}
           {lastUpdated && (
             <span className="text-xs text-muted-foreground tabular-nums hidden md:block">
-              {lastUpdated.toLocaleTimeString("ru-RU", {
+              {lastUpdated.toLocaleTimeString(t.locale, {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
@@ -72,7 +81,7 @@ export function Header() {
             <RefreshCw
               className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`}
             />
-            <span className="hidden sm:inline">Обновить</span>
+            <span className="hidden sm:inline">{t.refresh}</span>
           </button>
 
           {/* Load */}
@@ -81,7 +90,7 @@ export function Header() {
             className="h-8 px-3 text-xs rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground flex items-center gap-1.5 transition-colors"
           >
             <Upload className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Загрузить</span>
+            <span className="hidden sm:inline">{t.load}</span>
           </button>
           <input
             key={fileKey}
@@ -98,7 +107,29 @@ export function Header() {
             className="h-8 px-3 text-xs rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground flex items-center gap-1.5 transition-colors"
           >
             <Download className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Сохранить</span>
+            <span className="hidden sm:inline">{t.save}</span>
+          </button>
+
+          {/* Language toggle */}
+          <button
+            onClick={toggleLang}
+            className="h-8 w-14 text-xs rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground font-mono font-medium transition-colors"
+            title="Switch language / Сменить язык"
+          >
+            {lang === "ru" ? "EN" : "RU"}
+          </button>
+
+          {/* Theme toggle */}
+          <button
+            onClick={toggleTheme}
+            className="h-8 w-8 flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+            title={theme === "light" ? "Dark mode" : "Light mode"}
+          >
+            {theme === "light" ? (
+              <Moon className="h-3.5 w-3.5" />
+            ) : (
+              <Sun className="h-3.5 w-3.5" />
+            )}
           </button>
         </div>
       </div>

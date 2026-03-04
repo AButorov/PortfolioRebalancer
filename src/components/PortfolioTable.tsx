@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Trash2, Plus } from "lucide-react";
 import { usePortfolioStore } from "@/store/portfolioStore";
+import { useSettingsStore } from "@/store/settingsStore";
 import type { StockPositionEnriched, CashPositionEnriched } from "@/lib/types";
 
-function fmt(value: number | null, currency: string): string {
+function fmt(value: number | null, currency: string, locale: string): string {
   if (value === null) return "—";
-  return new Intl.NumberFormat("ru-RU", {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     minimumFractionDigits: 0,
@@ -30,8 +31,6 @@ function DeltaCell({ delta }: { delta: number | null }) {
   );
 }
 
-// ─── Stock Row ──────────────────────────────────────────────────────────────
-
 function StockRow({
   pos,
   index,
@@ -41,6 +40,7 @@ function StockRow({
 }) {
   const { updateStock, removeStock } = usePortfolioStore();
   const baseCurrency = usePortfolioStore((s) => s.portfolio.baseCurrency);
+  const { t } = useSettingsStore();
 
   return (
     <tr className="border-b last:border-0 hover:bg-muted/30 transition-colors">
@@ -66,10 +66,12 @@ function StockRow({
         />
       </td>
       <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums">
-        {pos.price !== null ? fmt(pos.price, pos.currency ?? "USD") : "—"}
+        {pos.price !== null
+          ? fmt(pos.price, pos.currency ?? "USD", t.locale)
+          : "—"}
       </td>
       <td className="px-3 py-2 text-xs tabular-nums">
-        {fmt(pos.valueBase, baseCurrency)}
+        {fmt(pos.valueBase, baseCurrency, t.locale)}
       </td>
       <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums">
         {pos.currentPercent !== null
@@ -102,8 +104,6 @@ function StockRow({
   );
 }
 
-// ─── Cash Row ───────────────────────────────────────────────────────────────
-
 function CashRow({
   pos,
   index,
@@ -114,6 +114,7 @@ function CashRow({
   baseCurrency: string;
 }) {
   const { updateCash, removeCash } = usePortfolioStore();
+  const { t } = useSettingsStore();
 
   return (
     <tr className="border-b last:border-0 hover:bg-muted/30 transition-colors">
@@ -139,7 +140,7 @@ function CashRow({
         />
       </td>
       <td className="px-3 py-2 text-xs tabular-nums">
-        {fmt(pos.valueBase, baseCurrency)}
+        {fmt(pos.valueBase, baseCurrency, t.locale)}
       </td>
       <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums">
         {pos.currentPercent !== null
@@ -172,8 +173,6 @@ function CashRow({
   );
 }
 
-// ─── Main ───────────────────────────────────────────────────────────────────
-
 export function PortfolioTable() {
   const [tab, setTab] = useState<"stocks" | "cash">("stocks");
   const {
@@ -184,6 +183,7 @@ export function PortfolioTable() {
     addCash,
     rebalanceResult,
   } = usePortfolioStore();
+  const { t } = useSettingsStore();
 
   const totalTarget = [...portfolio.positions, ...portfolio.cash].reduce(
     (s, p) => s + p.targetPercent,
@@ -205,7 +205,7 @@ export function PortfolioTable() {
                 : "bg-muted text-muted-foreground hover:text-foreground"
             }`}
           >
-            Акции ({portfolio.positions.length})
+            {t.stocks} ({portfolio.positions.length})
           </button>
           <button
             onClick={() => setTab("cash")}
@@ -215,14 +215,14 @@ export function PortfolioTable() {
                 : "bg-muted text-muted-foreground hover:text-foreground"
             }`}
           >
-            Кэш ({portfolio.cash.length})
+            {t.cash} ({portfolio.cash.length})
           </button>
         </div>
 
         <div className="flex items-center gap-2">
           {rebalanceResult && (
             <span className="text-sm font-medium tabular-nums">
-              {new Intl.NumberFormat("ru-RU", {
+              {new Intl.NumberFormat(t.locale, {
                 style: "currency",
                 currency: baseCurrency,
                 minimumFractionDigits: 0,
@@ -242,33 +242,28 @@ export function PortfolioTable() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Stocks table */}
       {tab === "stocks" && (
         <div className="rounded-md border overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Тикер
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Кол-во
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Цена
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Стоимость
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Факт %
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Цель %
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Δ
-                </th>
+                {[
+                  t.ticker,
+                  t.quantity,
+                  t.price,
+                  t.value,
+                  t.actualPercent,
+                  t.targetPercent,
+                  "Δ",
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="px-3 py-2 text-left text-xs font-medium text-muted-foreground"
+                  >
+                    {h}
+                  </th>
+                ))}
                 <th className="w-9" />
               </tr>
             </thead>
@@ -282,7 +277,7 @@ export function PortfolioTable() {
                     colSpan={8}
                     className="px-3 py-6 text-center text-xs text-muted-foreground"
                   >
-                    Нет позиций
+                    {t.noPositions}
                   </td>
                 </tr>
               )}
@@ -291,29 +286,27 @@ export function PortfolioTable() {
         </div>
       )}
 
+      {/* Cash table */}
       {tab === "cash" && (
         <div className="rounded-md border overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Валюта
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Сумма
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  В {baseCurrency}
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Факт %
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Цель %
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Δ
-                </th>
+                {[
+                  t.currency,
+                  t.amount,
+                  t.inCurrency(baseCurrency),
+                  t.actualPercent,
+                  t.targetPercent,
+                  "Δ",
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="px-3 py-2 text-left text-xs font-medium text-muted-foreground"
+                  >
+                    {h}
+                  </th>
+                ))}
                 <th className="w-9" />
               </tr>
             </thead>
@@ -332,7 +325,7 @@ export function PortfolioTable() {
                     colSpan={7}
                     className="px-3 py-6 text-center text-xs text-muted-foreground"
                   >
-                    Нет валютных позиций
+                    {t.noCashPositions}
                   </td>
                 </tr>
               )}
@@ -347,7 +340,7 @@ export function PortfolioTable() {
         className="h-7 px-3 text-xs rounded-md border border-dashed border-input hover:border-ring hover:bg-muted/50 flex items-center gap-1.5 transition-colors text-muted-foreground hover:text-foreground"
       >
         <Plus className="h-3.5 w-3.5" />
-        {tab === "stocks" ? "Добавить акцию" : "Добавить валюту"}
+        {tab === "stocks" ? t.addStock : t.addCurrency}
       </button>
     </div>
   );
