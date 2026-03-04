@@ -11,7 +11,7 @@ import type {
   FetchStatus,
 } from "@/lib/types";
 import { enrichPositions } from "@/lib/rebalance";
-import { fetchPrices as apiFetchPrices } from "@/services/yahooFinance";
+import { fetchPrices as apiFetchPrices } from "@/services/finnhub";
 import { fetchRatesForCurrencies } from "@/services/frankfurter";
 
 interface PortfolioState {
@@ -205,7 +205,6 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
     const { setFetchStatus, fetchAllPrices, fetchAllRates } = get();
     setFetchStatus("loading");
 
-    // allSettled — акции и валюты обновляются независимо друг от друга
     const [pricesResult, ratesResult] = await Promise.allSettled([
       fetchAllPrices(),
       fetchAllRates(),
