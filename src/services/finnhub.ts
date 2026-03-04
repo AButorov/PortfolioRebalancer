@@ -22,6 +22,7 @@
  */
 
 import type { TickerPrice } from "@/lib/types";
+import type { PriceMode } from "@/store/settingsStore";
 
 const ENV_API_KEY = import.meta.env.VITE_FINNHUB_API_KEY as string | undefined;
 const BASE_URL = "https://finnhub.io/api/v1";
@@ -75,6 +76,7 @@ function toFinnhub(ticker: string): { symbol: string; currency: string } {
 async function fetchTickerPrice(
   ticker: string,
   apiKey: string,
+  priceMode: PriceMode,
 ): Promise<TickerPrice> {
   const { symbol, currency } = toFinnhub(ticker);
   const url = `${BASE_URL}/quote?symbol=${encodeURIComponent(symbol)}&token=${apiKey}`;
@@ -86,8 +88,17 @@ async function fetchTickerPrice(
 
   const data: FinnhubQuote = await response.json();
 
-  // previousClose is the most reliable for EOD price
-  const price = data.pc > 0 ? data.pc : data.c;
+  // previousClose (pc) — стабильная цена закрытия предыдущего дня
+  // lastTrade (c)      — цена последней сделки (актуальна при высокой волатильности)
+  const price =
+    priceMode === "lastTrade"
+      ? data.c > 0
+        ? data.c
+        : data.pc // fallback на pc если рынок закрыт
+      : data.pc > 0
+        ? data.pc
+        : data.c; // fallback на c если pc ещё не установлен
+
   if (!price || price <= 0) {
     throw new Error(
       `No price data for ${ticker} (symbol not found or market closed)`,
@@ -98,14 +109,16 @@ async function fetchTickerPrice(
 }
 
 /**
- * Fetches previous-close prices for a list of tickers via Finnhub.
+ * Fetches prices for a list of tickers via Finnhub.
  *
- * @param tickers  - list of ticker symbols
- * @param apiKey   - Finnhub API key (overrides VITE_FINNHUB_API_KEY env var)
+ * @param tickers   - list of ticker symbols
+ * @param apiKey    - Finnhub API key (overrides VITE_FINNHUB_API_KEY env var)
+ * @param priceMode - "previousClose" (default) | "lastTrade"
  */
 export async function fetchPrices(
   tickers: string[],
   apiKey?: string,
+  priceMode: PriceMode = "previousClose",
 ): Promise<{
   prices: Map<string, TickerPrice>;
   errors: Map<string, string>;
@@ -118,7 +131,7 @@ export async function fetchPrices(
 
   const unique = [...new Set(tickers)];
   const results = await Promise.allSettled(
-    unique.map((t) => fetchTickerPrice(t, resolvedKey)),
+    unique.map((t) => fetchTickerPrice(t, resolvedKey, priceMode)),
   );
 
   const prices = new Map<string, TickerPrice>();

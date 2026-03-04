@@ -10,9 +10,12 @@ import {
   X,
   KeyRound,
   ExternalLink,
+  HelpCircle,
 } from "lucide-react";
 import { usePortfolioStore } from "@/store/portfolioStore";
 import { useSettingsStore } from "@/store/settingsStore";
+import type { PriceMode } from "@/store/settingsStore";
+import { HelpModal } from "@/components/HelpModal";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "RUB", "CNY", "JPY", "TRY", "CHF"];
 
@@ -20,7 +23,7 @@ const CURRENCIES = ["USD", "EUR", "GBP", "RUB", "CNY", "JPY", "TRY", "CHF"];
 
 function SettingsPanel({ onClose }: { onClose: () => void }) {
   const { finnhubApiKey, setFinnhubApiKey } = usePortfolioStore();
-  const { t } = useSettingsStore();
+  const { t, priceMode, setPriceMode } = useSettingsStore();
 
   const [localKey, setLocalKey] = useState(finnhubApiKey);
   const [saved, setSaved] = useState(false);
@@ -35,6 +38,15 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
     if (e.key === "Enter") handleSave();
     if (e.key === "Escape") onClose();
   };
+
+  const PRICE_MODES: { value: PriceMode; label: string; sub: string }[] = [
+    {
+      value: "previousClose",
+      label: t.priceModeClose,
+      sub: t.priceModeCloseSub,
+    },
+    { value: "lastTrade", label: t.priceModeLast, sub: t.priceModeLastSub },
+  ];
 
   return (
     // Backdrop
@@ -59,7 +71,7 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Body */}
-        <div className="px-4 py-4 space-y-4">
+        <div className="px-4 py-4 space-y-5">
           {/* Finnhub API key */}
           <div className="space-y-2.5">
             <div className="flex items-center gap-1.5">
@@ -103,6 +115,41 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
               {t.apiKeyHint}
             </a>
           </div>
+
+          {/* Divider */}
+          <div className="border-t" />
+
+          {/* Price mode */}
+          <div className="space-y-2">
+            <label className="text-xs font-medium">{t.priceModeLabel}</label>
+            <div className="space-y-1.5">
+              {PRICE_MODES.map(({ value, label, sub }) => (
+                <label
+                  key={value}
+                  className={`flex items-start gap-2.5 rounded-md border px-3 py-2.5 cursor-pointer transition-colors ${
+                    priceMode === value
+                      ? "border-ring bg-accent/40"
+                      : "border-input hover:bg-muted/40"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="priceMode"
+                    value={value}
+                    checked={priceMode === value}
+                    onChange={() => setPriceMode(value)}
+                    className="mt-0.5 shrink-0 accent-foreground"
+                  />
+                  <div>
+                    <p className="text-xs font-medium leading-tight">{label}</p>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                      {sub}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -127,6 +174,7 @@ export function Header() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileKey, setFileKey] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   const isLoading = fetchStatus === "loading";
 
@@ -246,6 +294,15 @@ export function Header() {
               {lang === "ru" ? "EN" : "RU"}
             </button>
 
+            {/* Help */}
+            <button
+              onClick={() => setShowHelp((v) => !v)}
+              className="h-8 w-8 flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+              title={lang === "ru" ? "Справка" : "Help"}
+            >
+              <HelpCircle className="h-3.5 w-3.5" />
+            </button>
+
             {/* Theme toggle */}
             <button
               onClick={toggleTheme}
@@ -264,6 +321,9 @@ export function Header() {
 
       {/* Settings overlay */}
       {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
+
+      {/* Help overlay */}
+      {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
     </>
   );
 }

@@ -55,6 +55,12 @@ export interface Translations {
   apiKeyWarningTitle: string;
   apiKeyWarningBody: string;
   apiKeySaved: string;
+  // Price mode
+  priceModeLabel: string;
+  priceModeClose: string;
+  priceModeCloseSub: string;
+  priceModeLast: string;
+  priceModeLastSub: string;
   // Intl locale
   locale: string;
 }
@@ -110,6 +116,13 @@ const ru: Translations = {
   apiKeyWarningBody:
     "Для загрузки котировок акций введите Finnhub API ключ в настройках (⚙). Бесплатная регистрация на finnhub.io.",
   apiKeySaved: "Ключ сохранён",
+  priceModeLabel: "Цена акции",
+  priceModeClose: "Цена закрытия",
+  priceModeCloseSub:
+    "Цена закрытия предыдущего торгового дня. Стабильна, не меняется в течение дня.",
+  priceModeLast: "Последняя сделка",
+  priceModeLastSub:
+    "Цена последней совершённой сделки. Актуальна при высокой волатильности.",
   locale: "ru-RU",
 };
 
@@ -164,6 +177,13 @@ const en: Translations = {
   apiKeyWarningBody:
     "To fetch stock quotes, add a Finnhub API key in settings (⚙). Free registration at finnhub.io.",
   apiKeySaved: "Key saved",
+  priceModeLabel: "Stock price",
+  priceModeClose: "Previous close",
+  priceModeCloseSub:
+    "Official closing price from the previous trading day. Stable throughout the day.",
+  priceModeLast: "Last trade",
+  priceModeLastSub:
+    "Price of the most recent transaction. Useful during high volatility.",
   locale: "en-US",
 };
 

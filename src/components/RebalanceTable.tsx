@@ -14,7 +14,8 @@ import type { StockRecommendation, CashRecommendation } from "@/lib/types";
 
 // ─── Форматирование ────────────────────────────────────────────────────────
 
-function fmt(value: number, currency: string, locale: string): string {
+/** Сумма сделки в базовой валюте — без копеек */
+function fmtCurrency(value: number, currency: string, locale: string): string {
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
@@ -23,23 +24,22 @@ function fmt(value: number, currency: string, locale: string): string {
   }).format(value);
 }
 
-function fmtNum(value: number, locale: string): string {
-  return new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(
-    value,
-  );
+/** Количество акций / сумма кэша — всегда 2 знака */
+function fmtQty(value: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
-// ─── Типы сортировки ────────────────────────────────────────────────────────
+// ─── Сортировка ─────────────────────────────────────────────────────────────
 
 type SortField = "ticker" | "action";
 type SortDir = "asc" | "desc";
 type Action = "buy" | "sell" | "hold";
 
-const ACTION_ORDER: Record<Action, number> = {
-  sell: 0, // при ascending — продажи идут первыми
-  hold: 1,
-  buy: 2,
-};
+/** При ascending: сначала Продать → Держать → Купить */
+const ACTION_ORDER: Record<Action, number> = { sell: 0, hold: 1, buy: 2 };
 
 function getAction(diff: number, threshold = 0.5): Action {
   if (Math.abs(diff) < threshold) return "hold";
@@ -53,12 +53,10 @@ function sortStocks(
 ): StockRecommendation[] {
   if (!field) return stocks;
   return [...stocks].sort((a, b) => {
-    let cmp = 0;
-    if (field === "ticker") {
-      cmp = a.ticker.localeCompare(b.ticker);
-    } else if (field === "action") {
-      cmp = ACTION_ORDER[getAction(a.diff)] - ACTION_ORDER[getAction(b.diff)];
-    }
+    const cmp =
+      field === "ticker"
+        ? a.ticker.localeCompare(b.ticker)
+        : ACTION_ORDER[getAction(a.diff)] - ACTION_ORDER[getAction(b.diff)];
     return dir === "asc" ? cmp : -cmp;
   });
 }
@@ -76,7 +74,7 @@ function sortCash(
   });
 }
 
-// ─── Компоненты ─────────────────────────────────────────────────────────────
+// ─── Вспомогательные компоненты ───────────────────────────────────────────────
 
 function ActionBadge({ action }: { action: Action }) {
   const { t } = useSettingsStore();
@@ -112,10 +110,8 @@ function DriftBadge({ drift }: { drift: number }) {
       : drift < 10
         ? "border-yellow-500 text-yellow-600 dark:text-yellow-400"
         : "border-red-500 text-red-500";
-
   const label =
     drift < 5 ? t.driftNormal : drift < 10 ? t.driftConsider : t.driftRebalance;
-
   return (
     <span
       className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full border ${color}`}
@@ -129,7 +125,6 @@ function DriftBadge({ drift }: { drift: number }) {
   );
 }
 
-/** Иконка сортировки в заголовке колонки */
 function SortIcon({
   field,
   sortField,
@@ -148,34 +143,53 @@ function SortIcon({
   );
 }
 
-/** Кликабельный заголовок колонки с поддержкой сортировки */
-function SortableHeader({
+/** Обычный заголовок */
+function Th({
+  children,
+  right,
+}: {
+  children: React.ReactNode;
+  right?: boolean;
+}) {
+  return (
+    <th
+      className={`px-3 py-2 text-xs font-medium text-muted-foreground ${right ? "text-right" : "text-left"}`}
+    >
+      {children}
+    </th>
+  );
+}
+
+/** Сортируемый заголовок */
+function SortableTh({
   field,
   sortField,
   sortDir,
   onSort,
+  right,
   children,
 }: {
   field: SortField;
   sortField: SortField | null;
   sortDir: SortDir;
   onSort: (f: SortField) => void;
+  right?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <th
-      className="px-3 py-2 text-left text-xs font-medium text-muted-foreground select-none cursor-pointer hover:text-foreground transition-colors"
+      className={`px-3 py-2 text-xs font-medium text-muted-foreground select-none cursor-pointer hover:text-foreground transition-colors ${right ? "text-right" : "text-left"}`}
       onClick={() => onSort(field)}
     >
-      <span className="inline-flex items-center gap-1">
+      <span
+        className={`inline-flex items-center gap-1 ${right ? "flex-row-reverse" : ""}`}
+      >
         {children}
         <SortIcon field={field} sortField={sortField} sortDir={sortDir} />
       </span>
     </th>
   );
 }
-
-// ─── Предупреждение об отсутствии API ключа ──────────────────────────────────
 
 function ApiKeyBanner() {
   const { t } = useSettingsStore();
@@ -212,8 +226,6 @@ export function RebalanceTable() {
     }
   };
 
-  // ── Состояния загрузки ──────────────────────────────────────────────────
-
   if (fetchStatus === "loading") {
     return (
       <div className="flex items-center justify-center py-8 text-xs text-muted-foreground gap-2">
@@ -224,9 +236,7 @@ export function RebalanceTable() {
   }
 
   if (fetchStatus === "error") {
-    if (fetchError === "NO_API_KEY") {
-      return <ApiKeyBanner />;
-    }
+    if (fetchError === "NO_API_KEY") return <ApiKeyBanner />;
     return (
       <div className="py-4 text-xs text-destructive">
         {t.loadError} {fetchError}
@@ -253,7 +263,7 @@ export function RebalanceTable() {
         <div className="text-xs text-muted-foreground">
           {t.total}{" "}
           <span className="text-foreground font-medium">
-            {fmt(totalValueBase, baseCurrency, t.locale)}
+            {fmtCurrency(totalValueBase, baseCurrency, t.locale)}
           </span>
         </div>
         <DriftBadge drift={drift} />
@@ -265,73 +275,65 @@ export function RebalanceTable() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <SortableHeader
+                <SortableTh
                   field="ticker"
                   sortField={sortField}
                   sortDir={sortDir}
                   onSort={handleSort}
                 >
                   {t.ticker}
-                </SortableHeader>
-                {[t.current, t.target, t.diff, t.amount].map((h) => (
-                  <th
-                    key={h}
-                    className="px-3 py-2 text-left text-xs font-medium text-muted-foreground"
-                  >
-                    {h}
-                  </th>
-                ))}
-                <SortableHeader
+                </SortableTh>
+                <Th right>{t.current}</Th>
+                <Th right>{t.target}</Th>
+                <Th right>{t.diff}</Th>
+                <Th right>{t.amount}</Th>
+                <SortableTh
                   field="action"
                   sortField={sortField}
                   sortDir={sortDir}
                   onSort={handleSort}
                 >
                   {t.action}
-                </SortableHeader>
+                </SortableTh>
               </tr>
             </thead>
             <tbody>
               {stocks.map((rec) => {
                 const action = getAction(rec.diff);
+                const diffColor =
+                  rec.diff > 0
+                    ? "text-green-600 dark:text-green-400"
+                    : rec.diff < 0
+                      ? "text-red-500"
+                      : "text-muted-foreground";
                 return (
                   <tr
                     key={rec.ticker}
                     className="border-b last:border-0 hover:bg-muted/30 transition-colors"
                   >
-                    <td className="px-3 py-2.5 font-mono font-medium text-xs">
+                    <td className="px-3 py-2.5 text-left font-mono font-medium text-xs">
                       {rec.ticker}
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-muted-foreground tabular-nums">
-                      {fmtNum(rec.currentQuantity, t.locale)} {t.pieces}
+                    <td className="px-3 py-2.5 text-right text-xs tabular-nums text-muted-foreground">
+                      {fmtQty(rec.currentQuantity, t.locale)} {t.pieces}
                     </td>
-                    <td className="px-3 py-2.5 text-xs tabular-nums">
-                      {fmtNum(rec.targetQuantity, t.locale)} {t.pieces}
+                    <td className="px-3 py-2.5 text-right text-xs tabular-nums">
+                      {fmtQty(rec.targetQuantity, t.locale)} {t.pieces}
                     </td>
-                    <td className="px-3 py-2.5 text-xs tabular-nums">
-                      <span
-                        className={
-                          rec.diff > 0
-                            ? "text-green-600 dark:text-green-400"
-                            : rec.diff < 0
-                              ? "text-red-500"
-                              : "text-muted-foreground"
-                        }
-                      >
-                        {rec.diff > 0 ? "+" : ""}
-                        {fmtNum(rec.diff, t.locale)} {t.pieces}
-                      </span>
+                    <td
+                      className={`px-3 py-2.5 text-right text-xs tabular-nums ${diffColor}`}
+                    >
+                      {rec.diff > 0 ? "+" : ""}
+                      {fmtQty(rec.diff, t.locale)} {t.pieces}
                     </td>
-                    <td className="px-3 py-2.5 text-xs tabular-nums text-muted-foreground">
-                      {rec.tradeValueBase !== null
-                        ? fmt(
-                            Math.abs(rec.tradeValueBase),
-                            baseCurrency,
-                            t.locale,
-                          )
-                        : "—"}
+                    <td className="px-3 py-2.5 text-right text-xs tabular-nums text-muted-foreground">
+                      {fmtCurrency(
+                        Math.abs(rec.tradeValueBase ?? 0),
+                        baseCurrency,
+                        t.locale,
+                      )}
                     </td>
-                    <td className="px-3 py-2.5">
+                    <td className="px-3 py-2.5 text-left">
                       <ActionBadge action={action} />
                     </td>
                   </tr>
@@ -348,59 +350,50 @@ export function RebalanceTable() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  {t.currency}
-                </th>
-                {[t.current, t.target, t.diff].map((h) => (
-                  <th
-                    key={h}
-                    className="px-3 py-2 text-left text-xs font-medium text-muted-foreground"
-                  >
-                    {h}
-                  </th>
-                ))}
-                <SortableHeader
+                <Th>{t.currency}</Th>
+                <Th right>{t.current}</Th>
+                <Th right>{t.target}</Th>
+                <Th right>{t.diff}</Th>
+                <SortableTh
                   field="action"
                   sortField={sortField}
                   sortDir={sortDir}
                   onSort={handleSort}
                 >
                   {t.action}
-                </SortableHeader>
+                </SortableTh>
               </tr>
             </thead>
             <tbody>
               {cash.map((rec) => {
                 const action = getAction(rec.diff, 10);
+                const diffColor =
+                  rec.diff > 0
+                    ? "text-green-600 dark:text-green-400"
+                    : rec.diff < 0
+                      ? "text-red-500"
+                      : "text-muted-foreground";
                 return (
                   <tr
                     key={rec.currency}
                     className="border-b last:border-0 hover:bg-muted/30 transition-colors"
                   >
-                    <td className="px-3 py-2.5 font-mono font-medium text-xs">
+                    <td className="px-3 py-2.5 text-left font-mono font-medium text-xs">
                       {rec.currency}
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-muted-foreground tabular-nums">
-                      {fmtNum(rec.currentAmount, t.locale)}
+                    <td className="px-3 py-2.5 text-right text-xs tabular-nums text-muted-foreground">
+                      {fmtQty(rec.currentAmount, t.locale)}
                     </td>
-                    <td className="px-3 py-2.5 text-xs tabular-nums">
-                      {fmtNum(rec.targetAmount, t.locale)}
+                    <td className="px-3 py-2.5 text-right text-xs tabular-nums">
+                      {fmtQty(rec.targetAmount, t.locale)}
                     </td>
-                    <td className="px-3 py-2.5 text-xs tabular-nums">
-                      <span
-                        className={
-                          rec.diff > 0
-                            ? "text-green-600 dark:text-green-400"
-                            : rec.diff < 0
-                              ? "text-red-500"
-                              : "text-muted-foreground"
-                        }
-                      >
-                        {rec.diff > 0 ? "+" : ""}
-                        {fmtNum(rec.diff, t.locale)}
-                      </span>
+                    <td
+                      className={`px-3 py-2.5 text-right text-xs tabular-nums ${diffColor}`}
+                    >
+                      {rec.diff > 0 ? "+" : ""}
+                      {fmtQty(rec.diff, t.locale)}
                     </td>
-                    <td className="px-3 py-2.5">
+                    <td className="px-3 py-2.5 text-left">
                       <ActionBadge action={action} />
                     </td>
                   </tr>

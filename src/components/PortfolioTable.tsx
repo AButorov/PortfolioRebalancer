@@ -4,32 +4,61 @@ import { usePortfolioStore } from "@/store/portfolioStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import type { StockPositionEnriched, CashPositionEnriched } from "@/lib/types";
 
-function fmt(value: number | null, currency: string, locale: string): string {
-  if (value === null) return "—";
+// ─── Форматирование ────────────────────────────────────────────────────────
+
+function fmtCurrency(
+  value: number | null,
+  currency: string,
+  locale: string,
+): string {
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(value);
+  }).format(value ?? 0);
 }
 
+function fmtPrice(
+  value: number | null,
+  currency: string,
+  locale: string,
+): string {
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value ?? 0);
+}
+
+function fmtPct(value: number | null): string {
+  return (value ?? 0).toFixed(1) + "%";
+}
+
+// ─── Дельта ────────────────────────────────────────────────────────────────
+
 function DeltaCell({ delta }: { delta: number | null }) {
-  if (delta === null)
-    return <td className="px-3 py-2 text-xs text-muted-foreground">—</td>;
+  const val = delta ?? 0;
   const color =
-    delta > 0.5
+    val > 0.5
       ? "text-green-600 dark:text-green-400"
-      : delta < -0.5
+      : val < -0.5
         ? "text-red-500"
         : "text-muted-foreground";
   return (
-    <td className={`px-3 py-2 text-xs tabular-nums ${color}`}>
-      {delta > 0 ? "+" : ""}
-      {delta.toFixed(1)}%
+    <td className={`px-3 py-2 text-right text-xs tabular-nums ${color}`}>
+      {val > 0 ? "+" : ""}
+      {val.toFixed(1)}%
     </td>
   );
 }
+
+// Единый стиль инпута — заполняет ячейку целиком
+const inputCls =
+  "w-full h-7 px-2 text-xs tabular-nums rounded border border-input bg-transparent focus:outline-none focus:ring-1 focus:ring-ring";
+
+// ─── Строка акции ───────────────────────────────────────────────────────────
 
 function StockRow({
   pos,
@@ -51,51 +80,48 @@ function StockRow({
             updateStock(index, { ticker: e.target.value.toUpperCase() })
           }
           placeholder="AAPL"
-          className="w-20 h-7 px-2 text-xs font-mono uppercase rounded border border-input bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
+          className={`${inputCls} font-mono uppercase text-left`}
         />
       </td>
       <td className="px-3 py-2">
         <input
           type="number"
-          value={pos.quantity || ""}
+          value={pos.quantity}
           min={0}
+          step={1}
           onChange={(e) =>
             updateStock(index, { quantity: Number(e.target.value) })
           }
-          className="w-20 h-7 px-2 text-xs tabular-nums rounded border border-input bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
+          className={`${inputCls} text-right`}
         />
       </td>
-      <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums">
-        {pos.price !== null
-          ? fmt(pos.price, pos.currency ?? "USD", t.locale)
-          : "—"}
+      <td className="px-3 py-2 text-right text-xs tabular-nums text-muted-foreground">
+        {fmtPrice(pos.price, pos.currency ?? "USD", t.locale)}
       </td>
-      <td className="px-3 py-2 text-xs tabular-nums">
-        {fmt(pos.valueBase, baseCurrency, t.locale)}
+      <td className="px-3 py-2 text-right text-xs tabular-nums">
+        {fmtCurrency(pos.valueBase, baseCurrency, t.locale)}
       </td>
-      <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums">
-        {pos.currentPercent !== null
-          ? `${pos.currentPercent.toFixed(1)}%`
-          : "—"}
+      <td className="px-3 py-2 text-right text-xs tabular-nums text-muted-foreground">
+        {fmtPct(pos.currentPercent)}
       </td>
       <td className="px-3 py-2">
         <input
           type="number"
-          value={pos.targetPercent || ""}
+          value={pos.targetPercent}
           min={0}
           max={100}
           step={0.1}
           onChange={(e) =>
             updateStock(index, { targetPercent: Number(e.target.value) })
           }
-          className="w-16 h-7 px-2 text-xs tabular-nums rounded border border-input bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
+          className={`${inputCls} text-right`}
         />
       </td>
       <DeltaCell delta={pos.delta} />
-      <td className="px-2 py-2">
+      <td className="px-2 py-2 text-center">
         <button
           onClick={() => removeStock(index)}
-          className="h-7 w-7 flex items-center justify-center rounded hover:bg-destructive/10 hover:text-destructive transition-colors"
+          className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-destructive/10 hover:text-destructive transition-colors"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
@@ -103,6 +129,8 @@ function StockRow({
     </tr>
   );
 }
+
+// ─── Строка кэша ────────────────────────────────────────────────────────────
 
 function CashRow({
   pos,
@@ -125,46 +153,45 @@ function CashRow({
             updateCash(index, { currency: e.target.value.toUpperCase() })
           }
           placeholder="USD"
-          className="w-20 h-7 px-2 text-xs font-mono uppercase rounded border border-input bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
+          className={`${inputCls} font-mono uppercase text-left`}
         />
       </td>
       <td className="px-3 py-2">
         <input
           type="number"
-          value={pos.amount || ""}
+          value={pos.amount}
           min={0}
+          step={0.01}
           onChange={(e) =>
             updateCash(index, { amount: Number(e.target.value) })
           }
-          className="w-28 h-7 px-2 text-xs tabular-nums rounded border border-input bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
+          className={`${inputCls} text-right`}
         />
       </td>
-      <td className="px-3 py-2 text-xs tabular-nums">
-        {fmt(pos.valueBase, baseCurrency, t.locale)}
+      <td className="px-3 py-2 text-right text-xs tabular-nums">
+        {fmtCurrency(pos.valueBase, baseCurrency, t.locale)}
       </td>
-      <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums">
-        {pos.currentPercent !== null
-          ? `${pos.currentPercent.toFixed(1)}%`
-          : "—"}
+      <td className="px-3 py-2 text-right text-xs tabular-nums text-muted-foreground">
+        {fmtPct(pos.currentPercent)}
       </td>
       <td className="px-3 py-2">
         <input
           type="number"
-          value={pos.targetPercent || ""}
+          value={pos.targetPercent}
           min={0}
           max={100}
           step={0.1}
           onChange={(e) =>
             updateCash(index, { targetPercent: Number(e.target.value) })
           }
-          className="w-16 h-7 px-2 text-xs tabular-nums rounded border border-input bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
+          className={`${inputCls} text-right`}
         />
       </td>
       <DeltaCell delta={pos.delta} />
-      <td className="px-2 py-2">
+      <td className="px-2 py-2 text-center">
         <button
           onClick={() => removeCash(index)}
-          className="h-7 w-7 flex items-center justify-center rounded hover:bg-destructive/10 hover:text-destructive transition-colors"
+          className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-destructive/10 hover:text-destructive transition-colors"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
@@ -172,6 +199,26 @@ function CashRow({
     </tr>
   );
 }
+
+// ─── Заголовок ─────────────────────────────────────────────────────────────
+
+function Th({
+  children,
+  right,
+}: {
+  children: React.ReactNode;
+  right?: boolean;
+}) {
+  return (
+    <th
+      className={`px-3 py-2 text-xs font-medium text-muted-foreground ${right ? "text-right" : "text-left"}`}
+    >
+      {children}
+    </th>
+  );
+}
+
+// ─── Основной компонент ──────────────────────────────────────────────────────
 
 export function PortfolioTable() {
   const [tab, setTab] = useState<"stocks" | "cash">("stocks");
@@ -194,7 +241,7 @@ export function PortfolioTable() {
 
   return (
     <div className="space-y-3">
-      {/* Summary row */}
+      {/* Переключатель + итого */}
       <div className="flex items-center justify-between">
         <div className="flex gap-1">
           <button
@@ -242,29 +289,37 @@ export function PortfolioTable() {
         </div>
       </div>
 
-      {/* Stocks table */}
+      {/* ── Таблица акций ─────────────────────────────────────────────────── */}
       {tab === "stocks" && (
         <div className="rounded-md border overflow-x-auto">
-          <table className="w-full text-sm">
+          {/*
+            table-fixed + colgroup: заголовок и ячейки гарантированно
+            имеют одинаковую ширину, инпуты растянуты на w-full.
+
+            Тикер | Кол-во | Цена | Стоимость | Факт% | Цель% | Δ  | ✕
+            16%   | 12%    | 14%  | 17%       | 10%   | 12%   | 10%| 36px
+          */}
+          <table className="w-full text-sm table-fixed">
+            <colgroup>
+              <col style={{ width: "16%" }} />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "14%" }} />
+              <col style={{ width: "17%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "36px" }} />
+            </colgroup>
             <thead>
               <tr className="border-b bg-muted/50">
-                {[
-                  t.ticker,
-                  t.quantity,
-                  t.price,
-                  t.value,
-                  t.actualPercent,
-                  t.targetPercent,
-                  "Δ",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className="px-3 py-2 text-left text-xs font-medium text-muted-foreground"
-                  >
-                    {h}
-                  </th>
-                ))}
-                <th className="w-9" />
+                <Th>{t.ticker}</Th>
+                <Th right>{t.quantity}</Th>
+                <Th right>{t.price}</Th>
+                <Th right>{t.value}</Th>
+                <Th right>{t.actualPercent}</Th>
+                <Th right>{t.targetPercent}</Th>
+                <Th right>Δ</Th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -286,28 +341,32 @@ export function PortfolioTable() {
         </div>
       )}
 
-      {/* Cash table */}
+      {/* ── Таблица кэша ──────────────────────────────────────────────────── */}
       {tab === "cash" && (
         <div className="rounded-md border overflow-x-auto">
-          <table className="w-full text-sm">
+          {/*
+            Валюта | Сумма | В базовой | Факт% | Цель% | Δ   | ✕
+            16%    | 18%   | 18%       | 12%   | 15%   | 12% | 36px
+          */}
+          <table className="w-full text-sm table-fixed">
+            <colgroup>
+              <col style={{ width: "16%" }} />
+              <col style={{ width: "18%" }} />
+              <col style={{ width: "18%" }} />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "15%" }} />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "36px" }} />
+            </colgroup>
             <thead>
               <tr className="border-b bg-muted/50">
-                {[
-                  t.currency,
-                  t.amount,
-                  t.inCurrency(baseCurrency),
-                  t.actualPercent,
-                  t.targetPercent,
-                  "Δ",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className="px-3 py-2 text-left text-xs font-medium text-muted-foreground"
-                  >
-                    {h}
-                  </th>
-                ))}
-                <th className="w-9" />
+                <Th>{t.currency}</Th>
+                <Th right>{t.amount}</Th>
+                <Th right>{t.inCurrency(baseCurrency)}</Th>
+                <Th right>{t.actualPercent}</Th>
+                <Th right>{t.targetPercent}</Th>
+                <Th right>Δ</Th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -334,7 +393,7 @@ export function PortfolioTable() {
         </div>
       )}
 
-      {/* Add button */}
+      {/* Кнопка добавления */}
       <button
         onClick={tab === "stocks" ? addStock : addCash}
         className="h-7 px-3 text-xs rounded-md border border-dashed border-input hover:border-ring hover:bg-muted/50 flex items-center gap-1.5 transition-colors text-muted-foreground hover:text-foreground"

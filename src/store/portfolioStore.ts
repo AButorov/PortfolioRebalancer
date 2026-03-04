@@ -13,8 +13,17 @@ import type {
 import { enrichPositions } from "@/lib/rebalance";
 import { fetchPrices as apiFetchPrices } from "@/services/finnhub";
 import { fetchRatesForCurrencies } from "@/services/frankfurter";
+import { useSettingsStore } from "@/store/settingsStore";
+
+import type { PriceMode } from "@/store/settingsStore";
 
 const LS_KEY = "pr-finnhub-key";
+
+// Тип расширенного JSON-файла (настройки поверх Portfolio)
+type PortfolioFile = Portfolio & {
+  finnhubApiKey?: string;
+  priceMode?: PriceMode;
+};
 
 interface PortfolioState {
   portfolio: Portfolio;
@@ -189,10 +198,12 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
     const tickers = portfolio.positions.map((p) => p.ticker).filter(Boolean);
     if (tickers.length === 0) return;
 
-    // fetchPrices throws "NO_API_KEY" if key is absent
+    const { priceMode } = useSettingsStore.getState();
+
     const { prices: priceList, errors } = await apiFetchPrices(
       tickers,
       finnhubApiKey || undefined,
+      priceMode,
     );
 
     if (errors.size > 0) {
@@ -267,27 +278,42 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
 
   loadFromFile: async (file: File) => {
     const text = await file.text();
-    const raw = JSON.parse(text) as Portfolio & { finnhubApiKey?: string };
+    const raw = JSON.parse(text) as PortfolioFile;
 
-    // Извлекаем ключ из файла, если есть
+    const { setPriceMode } = useSettingsStore.getState();
+
+    // Считываем настройки из файла
     if (raw.finnhubApiKey) {
       localStorage.setItem(LS_KEY, raw.finnhubApiKey);
       set({ finnhubApiKey: raw.finnhubApiKey });
     }
+    if (raw.priceMode === "previousClose" || raw.priceMode === "lastTrade") {
+      setPriceMode(raw.priceMode);
+    }
 
-    // Очищаем ключ из объекта портфеля перед сохранением в store
-    const portfolio = raw as Portfolio;
-    delete (portfolio as Portfolio & { finnhubApiKey?: string }).finnhubApiKey;
-    get().setPortfolio(portfolio);
+    // Очищаем служебные поля перед сохранением в store
+    const portfolio = { ...raw } as PortfolioFile;
+    delete portfolio.finnhubApiKey;
+    delete portfolio.priceMode;
+    get().setPortfolio(portfolio as Portfolio);
   },
 
   saveToFile: () => {
     const { portfolio, finnhubApiKey } = get();
+    const { priceMode } = useSettingsStore.getState();
 
-    // Включаем ключ в JSON, если он задан
-    const data: Portfolio & { finnhubApiKey?: string } = {
+    // Предлагаем пользователю ввести имя файла
+    const raw = window.prompt("Имя файла / File name", "portfolio");
+    if (raw === null) return; // пользователь нажал «Отмена»
+
+    // Нормализуем: убираем пробелы, добавляем .json если нет
+    const trimmed = raw.trim() || "portfolio";
+    const filename = trimmed.endsWith(".json") ? trimmed : `${trimmed}.json`;
+
+    const data: PortfolioFile = {
       ...portfolio,
       ...(finnhubApiKey ? { finnhubApiKey } : {}),
+      priceMode,
     };
 
     const json = JSON.stringify(data, null, 2);
@@ -295,7 +321,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "portfolio.json";
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
   },
