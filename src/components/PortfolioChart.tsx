@@ -22,30 +22,72 @@ const PALETTE = [
   "#6366f1",
 ];
 
+interface ArcPath {
+  d: string;
+  segmentIndex: number;
+}
+
+/**
+ * Строит SVG-пути для секторов круговой диаграммы.
+ *
+ * Исправления по сравнению с исходной версией:
+ * - Единственный сегмент (100%) → две полуокружности вместо вырожденной дуги
+ * - Сегмент, занимающий почти весь круг (>99.9%) → аналогичная защита
+ * - Координаты округляются до 4 знаков для избежания артефактов
+ */
 function buildArcs(
   segments: Segment[],
   cx: number,
   cy: number,
   r: number,
-): string[] {
+): ArcPath[] {
   const total = segments.reduce((s, seg) => s + seg.value, 0);
   if (total === 0) return [];
-  const paths: string[] = [];
+
+  const result: ArcPath[] = [];
   let startAngle = -Math.PI / 2;
-  for (const seg of segments) {
+
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    if (seg.value <= 0) continue;
+
     const angle = (seg.value / total) * 2 * Math.PI;
+
+    // Сегмент занимает весь круг — SVG arc не умеет рисовать ровно 360°.
+    // Рисуем двумя полуокружностями.
+    if (angle >= 2 * Math.PI - 0.0001) {
+      const x1 = (cx + r * Math.cos(startAngle)).toFixed(4);
+      const y1 = (cy + r * Math.sin(startAngle)).toFixed(4);
+      const xm = (cx + r * Math.cos(startAngle + Math.PI)).toFixed(4);
+      const ym = (cy + r * Math.sin(startAngle + Math.PI)).toFixed(4);
+      result.push({
+        d: `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 1 1 ${xm} ${ym} Z`,
+        segmentIndex: i,
+      });
+      result.push({
+        d: `M ${cx} ${cy} L ${xm} ${ym} A ${r} ${r} 0 1 1 ${x1} ${y1} Z`,
+        segmentIndex: i,
+      });
+      startAngle += angle;
+      continue;
+    }
+
     const endAngle = startAngle + angle;
-    const x1 = cx + r * Math.cos(startAngle);
-    const y1 = cy + r * Math.sin(startAngle);
-    const x2 = cx + r * Math.cos(endAngle);
-    const y2 = cy + r * Math.sin(endAngle);
+    const x1 = (cx + r * Math.cos(startAngle)).toFixed(4);
+    const y1 = (cy + r * Math.sin(startAngle)).toFixed(4);
+    const x2 = (cx + r * Math.cos(endAngle)).toFixed(4);
+    const y2 = (cy + r * Math.sin(endAngle)).toFixed(4);
     const largeArc = angle > Math.PI ? 1 : 0;
-    paths.push(
-      `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`,
-    );
+
+    result.push({
+      d: `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`,
+      segmentIndex: i,
+    });
+
     startAngle = endAngle;
   }
-  return paths;
+
+  return result;
 }
 
 export function PortfolioChart() {
@@ -56,8 +98,10 @@ export function PortfolioChart() {
     const result: Segment[] = [];
     let colorIdx = 0;
     for (const s of enrichedStocks) {
-      const value =
+      const raw =
         s.currentPercent !== null ? s.currentPercent : s.targetPercent;
+      const value = Math.max(0, raw); // защита от отрицательных значений
+      if (value <= 0) continue;
       result.push({
         label: s.ticker || "?",
         value,
@@ -66,8 +110,10 @@ export function PortfolioChart() {
       });
     }
     for (const c of enrichedCash) {
-      const value =
+      const raw =
         c.currentPercent !== null ? c.currentPercent : c.targetPercent;
+      const value = Math.max(0, raw);
+      if (value <= 0) continue;
       result.push({
         label: c.currency || "?",
         value,
@@ -75,7 +121,7 @@ export function PortfolioChart() {
         color: PALETTE[colorIdx++ % PALETTE.length],
       });
     }
-    return result.filter((s) => s.value > 0);
+    return result;
   }, [enrichedStocks, enrichedCash]);
 
   if (segments.length === 0) {
@@ -102,9 +148,15 @@ export function PortfolioChart() {
           viewBox="0 0 160 160"
           className="shrink-0"
         >
-          {arcs.map((d, i) => (
-            <path key={i} d={d} fill={segments[i].color} opacity={0.85} />
+          {arcs.map((arc, i) => (
+            <path
+              key={i}
+              d={arc.d}
+              fill={segments[arc.segmentIndex].color}
+              opacity={0.85}
+            />
           ))}
+          {/* Вырезаем центр для эффекта «кольца» */}
           <circle cx={cx} cy={cy} r={innerR} fill="var(--background)" />
           <text
             x={cx}

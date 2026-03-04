@@ -4,15 +4,16 @@
  * Free tier: 60 API calls/minute, no backend needed, CORS supported.
  * Registration: https://finnhub.io → Dashboard → API Key
  *
- * Set your key in .env:
- *   VITE_FINNHUB_API_KEY=your_key_here
+ * The API key can be:
+ *   1. Saved in the portfolio JSON file (recommended — personal, local)
+ *   2. Set in .env as VITE_FINNHUB_API_KEY (fallback for dev environments)
  *
- * Ticker format (same as usual):
+ * Ticker format:
  *   AAPL, MSFT, MU         → US stocks
  *   BMW.DE (→ XETRA:BMW)   → auto-mapped by exchange suffix
  *
  * Exchange suffix mapping:
- *   no suffix → US (NASDAQ/NYSE via Finnhub default)
+ *   no suffix → US (NASDAQ/NYSE)
  *   .DE       → XETRA
  *   .L        → LSE
  *   .T        → TSE (Tokyo)
@@ -22,7 +23,7 @@
 
 import type { TickerPrice } from "@/lib/types";
 
-const API_KEY = import.meta.env.VITE_FINNHUB_API_KEY as string | undefined;
+const ENV_API_KEY = import.meta.env.VITE_FINNHUB_API_KEY as string | undefined;
 const BASE_URL = "https://finnhub.io/api/v1";
 
 // Yahoo-style suffix → Finnhub exchange prefix
@@ -66,22 +67,17 @@ function toFinnhub(ticker: string): { symbol: string; currency: string } {
         currency: exchange.currency,
       };
     }
-    // Unknown exchange — pass through as-is
     return { symbol: ticker.toUpperCase(), currency: "USD" };
   }
-  // No suffix → US stock
   return { symbol: ticker.toUpperCase(), currency: "USD" };
 }
 
-async function fetchTickerPrice(ticker: string): Promise<TickerPrice> {
-  if (!API_KEY) {
-    throw new Error(
-      "Finnhub API key not set. Add VITE_FINNHUB_API_KEY to .env file.",
-    );
-  }
-
+async function fetchTickerPrice(
+  ticker: string,
+  apiKey: string,
+): Promise<TickerPrice> {
   const { symbol, currency } = toFinnhub(ticker);
-  const url = `${BASE_URL}/quote?symbol=${encodeURIComponent(symbol)}&token=${API_KEY}`;
+  const url = `${BASE_URL}/quote?symbol=${encodeURIComponent(symbol)}&token=${apiKey}`;
 
   const response = await fetch(url);
   if (!response.ok) {
@@ -103,14 +99,27 @@ async function fetchTickerPrice(ticker: string): Promise<TickerPrice> {
 
 /**
  * Fetches previous-close prices for a list of tickers via Finnhub.
- * Returns prices map (successes) and errors map (failures).
+ *
+ * @param tickers  - list of ticker symbols
+ * @param apiKey   - Finnhub API key (overrides VITE_FINNHUB_API_KEY env var)
  */
-export async function fetchPrices(tickers: string[]): Promise<{
+export async function fetchPrices(
+  tickers: string[],
+  apiKey?: string,
+): Promise<{
   prices: Map<string, TickerPrice>;
   errors: Map<string, string>;
 }> {
+  const resolvedKey = apiKey || ENV_API_KEY;
+
+  if (!resolvedKey) {
+    throw new Error("NO_API_KEY");
+  }
+
   const unique = [...new Set(tickers)];
-  const results = await Promise.allSettled(unique.map(fetchTickerPrice));
+  const results = await Promise.allSettled(
+    unique.map((t) => fetchTickerPrice(t, resolvedKey)),
+  );
 
   const prices = new Map<string, TickerPrice>();
   const errors = new Map<string, string>();

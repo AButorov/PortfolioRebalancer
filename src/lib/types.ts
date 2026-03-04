@@ -16,6 +16,7 @@ export interface Portfolio {
   baseCurrency: string;
   positions: StockPosition[];
   cash: CashPosition[];
+  finnhubApiKey?: string; // сохраняется в JSON-файле портфеля
 }
 
 // --- Enriched data (after fetching prices) ---

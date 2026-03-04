@@ -5,6 +5,7 @@ export interface Translations {
   refresh: string;
   load: string;
   save: string;
+  settings: string;
   // App sections
   portfolio: string;
   structure: string;
@@ -46,6 +47,14 @@ export interface Translations {
   addPositionsHint: string;
   positions: string;
   actualVsTarget: string;
+  // Settings panel
+  apiKeyLabel: string;
+  apiKeyPlaceholder: string;
+  apiKeyHint: string;
+  apiKeyNote: string;
+  apiKeyWarningTitle: string;
+  apiKeyWarningBody: string;
+  apiKeySaved: string;
   // Intl locale
   locale: string;
 }
@@ -54,6 +63,7 @@ const ru: Translations = {
   refresh: "Обновить",
   load: "Загрузить",
   save: "Сохранить",
+  settings: "Настройки",
   portfolio: "Портфель",
   structure: "Структура",
   rebalancing: "Ребалансировка",
@@ -92,6 +102,14 @@ const ru: Translations = {
   addPositionsHint: "Добавьте позиции",
   positions: "позиций",
   actualVsTarget: "Факт vs цель",
+  apiKeyLabel: "Finnhub API ключ",
+  apiKeyPlaceholder: "Введите ключ...",
+  apiKeyHint: "Бесплатный ключ — finnhub.io",
+  apiKeyNote: "Ключ сохраняется в JSON-файл портфеля и читается при загрузке.",
+  apiKeyWarningTitle: "API ключ не настроен",
+  apiKeyWarningBody:
+    "Для загрузки котировок акций введите Finnhub API ключ в настройках (⚙). Бесплатная регистрация на finnhub.io.",
+  apiKeySaved: "Ключ сохранён",
   locale: "ru-RU",
 };
 
@@ -99,6 +117,7 @@ const en: Translations = {
   refresh: "Refresh",
   load: "Load",
   save: "Save",
+  settings: "Settings",
   portfolio: "Portfolio",
   structure: "Structure",
   rebalancing: "Rebalancing",
@@ -137,6 +156,14 @@ const en: Translations = {
   addPositionsHint: "Add positions",
   positions: "positions",
   actualVsTarget: "Actual vs target",
+  apiKeyLabel: "Finnhub API Key",
+  apiKeyPlaceholder: "Enter key...",
+  apiKeyHint: "Get a free key at finnhub.io",
+  apiKeyNote: "The key is saved to the portfolio JSON file and loaded with it.",
+  apiKeyWarningTitle: "API key not configured",
+  apiKeyWarningBody:
+    "To fetch stock quotes, add a Finnhub API key in settings (⚙). Free registration at finnhub.io.",
+  apiKeySaved: "Key saved",
   locale: "en-US",
 };
 

@@ -14,6 +14,8 @@ import { enrichPositions } from "@/lib/rebalance";
 import { fetchPrices as apiFetchPrices } from "@/services/finnhub";
 import { fetchRatesForCurrencies } from "@/services/frankfurter";
 
+const LS_KEY = "pr-finnhub-key";
+
 interface PortfolioState {
   portfolio: Portfolio;
   enrichedStocks: StockPositionEnriched[];
@@ -24,6 +26,9 @@ interface PortfolioState {
   fetchStatus: FetchStatus;
   fetchError: string | null;
   lastUpdated: Date | null;
+
+  /** Finnhub API key — хранится в localStorage + в JSON-файле портфеля */
+  finnhubApiKey: string;
 
   setPortfolio: (portfolio: Portfolio) => void;
   setBaseCurrency: (currency: string) => void;
@@ -39,6 +44,9 @@ interface PortfolioState {
   setPrices: (prices: PriceMap) => void;
   setRates: (rates: RateMap) => void;
   setFetchStatus: (status: FetchStatus, error?: string) => void;
+
+  /** Сохраняет ключ в store и localStorage */
+  setFinnhubApiKey: (key: string) => void;
 
   fetchAllPrices: () => Promise<void>;
   fetchAllRates: () => Promise<void>;
@@ -66,6 +74,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
   fetchStatus: "idle",
   fetchError: null,
   lastUpdated: null,
+  finnhubApiKey: localStorage.getItem(LS_KEY) ?? "",
 
   setPortfolio: (portfolio) => {
     set({
@@ -84,6 +93,11 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
   setBaseCurrency: (currency) => {
     set((s) => ({ portfolio: { ...s.portfolio, baseCurrency: currency } }));
     get().computeEnriched();
+  },
+
+  setFinnhubApiKey: (key) => {
+    localStorage.setItem(LS_KEY, key);
+    set({ finnhubApiKey: key });
   },
 
   addStock: () => {
@@ -171,11 +185,16 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
   },
 
   fetchAllPrices: async () => {
-    const { portfolio, setPrices } = get();
+    const { portfolio, finnhubApiKey, setPrices } = get();
     const tickers = portfolio.positions.map((p) => p.ticker).filter(Boolean);
     if (tickers.length === 0) return;
 
-    const { prices: priceList, errors } = await apiFetchPrices(tickers);
+    // fetchPrices throws "NO_API_KEY" if key is absent
+    const { prices: priceList, errors } = await apiFetchPrices(
+      tickers,
+      finnhubApiKey || undefined,
+    );
+
     if (errors.size > 0) {
       console.warn("Price fetch errors:", Object.fromEntries(errors));
     }
@@ -202,7 +221,20 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
   },
 
   refresh: async () => {
-    const { setFetchStatus, fetchAllPrices, fetchAllRates } = get();
+    const {
+      setFetchStatus,
+      fetchAllPrices,
+      fetchAllRates,
+      portfolio,
+      finnhubApiKey,
+    } = get();
+
+    // Если есть акции, но нет ключа — сразу сообщаем
+    if (portfolio.positions.length > 0 && !finnhubApiKey) {
+      setFetchStatus("error", "NO_API_KEY");
+      return;
+    }
+
     setFetchStatus("loading");
 
     const [pricesResult, ratesResult] = await Promise.allSettled([
@@ -212,11 +244,11 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
 
     const errors: string[] = [];
     if (pricesResult.status === "rejected") {
-      errors.push(
+      const msg =
         pricesResult.reason instanceof Error
           ? pricesResult.reason.message
-          : String(pricesResult.reason),
-      );
+          : String(pricesResult.reason);
+      errors.push(msg);
     }
     if (ratesResult.status === "rejected") {
       errors.push(
@@ -235,13 +267,30 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
 
   loadFromFile: async (file: File) => {
     const text = await file.text();
-    const data = JSON.parse(text) as Portfolio;
-    get().setPortfolio(data);
+    const raw = JSON.parse(text) as Portfolio & { finnhubApiKey?: string };
+
+    // Извлекаем ключ из файла, если есть
+    if (raw.finnhubApiKey) {
+      localStorage.setItem(LS_KEY, raw.finnhubApiKey);
+      set({ finnhubApiKey: raw.finnhubApiKey });
+    }
+
+    // Очищаем ключ из объекта портфеля перед сохранением в store
+    const portfolio = raw as Portfolio;
+    delete (portfolio as Portfolio & { finnhubApiKey?: string }).finnhubApiKey;
+    get().setPortfolio(portfolio);
   },
 
   saveToFile: () => {
-    const { portfolio } = get();
-    const json = JSON.stringify(portfolio, null, 2);
+    const { portfolio, finnhubApiKey } = get();
+
+    // Включаем ключ в JSON, если он задан
+    const data: Portfolio & { finnhubApiKey?: string } = {
+      ...portfolio,
+      ...(finnhubApiKey ? { finnhubApiKey } : {}),
+    };
+
+    const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
