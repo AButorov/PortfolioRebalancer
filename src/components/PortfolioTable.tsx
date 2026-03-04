@@ -32,8 +32,15 @@ function DeltaCell({ delta }: { delta: number | null }) {
 
 // ─── Stock Row ──────────────────────────────────────────────────────────────
 
-function StockRow({ pos }: { pos: StockPositionEnriched }) {
+function StockRow({
+  pos,
+  index,
+}: {
+  pos: StockPositionEnriched;
+  index: number;
+}) {
   const { updateStock, removeStock } = usePortfolioStore();
+  const baseCurrency = usePortfolioStore((s) => s.portfolio.baseCurrency);
 
   return (
     <tr className="border-b last:border-0 hover:bg-muted/30 transition-colors">
@@ -41,7 +48,7 @@ function StockRow({ pos }: { pos: StockPositionEnriched }) {
         <input
           value={pos.ticker}
           onChange={(e) =>
-            updateStock(pos.ticker, { ticker: e.target.value.toUpperCase() })
+            updateStock(index, { ticker: e.target.value.toUpperCase() })
           }
           placeholder="AAPL"
           className="w-20 h-7 px-2 text-xs font-mono uppercase rounded border border-input bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
@@ -53,7 +60,7 @@ function StockRow({ pos }: { pos: StockPositionEnriched }) {
           value={pos.quantity || ""}
           min={0}
           onChange={(e) =>
-            updateStock(pos.ticker, { quantity: Number(e.target.value) })
+            updateStock(index, { quantity: Number(e.target.value) })
           }
           className="w-20 h-7 px-2 text-xs tabular-nums rounded border border-input bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
         />
@@ -62,11 +69,7 @@ function StockRow({ pos }: { pos: StockPositionEnriched }) {
         {pos.price !== null ? fmt(pos.price, pos.currency ?? "USD") : "—"}
       </td>
       <td className="px-3 py-2 text-xs tabular-nums">
-        {usePortfolioStore.getState().portfolio.baseCurrency &&
-          fmt(
-            pos.valueBase,
-            usePortfolioStore.getState().portfolio.baseCurrency,
-          )}
+        {fmt(pos.valueBase, baseCurrency)}
       </td>
       <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums">
         {pos.currentPercent !== null
@@ -81,7 +84,7 @@ function StockRow({ pos }: { pos: StockPositionEnriched }) {
           max={100}
           step={0.1}
           onChange={(e) =>
-            updateStock(pos.ticker, { targetPercent: Number(e.target.value) })
+            updateStock(index, { targetPercent: Number(e.target.value) })
           }
           className="w-16 h-7 px-2 text-xs tabular-nums rounded border border-input bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
         />
@@ -89,7 +92,7 @@ function StockRow({ pos }: { pos: StockPositionEnriched }) {
       <DeltaCell delta={pos.delta} />
       <td className="px-2 py-2">
         <button
-          onClick={() => removeStock(pos.ticker)}
+          onClick={() => removeStock(index)}
           className="h-7 w-7 flex items-center justify-center rounded hover:bg-destructive/10 hover:text-destructive transition-colors"
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -103,9 +106,11 @@ function StockRow({ pos }: { pos: StockPositionEnriched }) {
 
 function CashRow({
   pos,
+  index,
   baseCurrency,
 }: {
   pos: CashPositionEnriched;
+  index: number;
   baseCurrency: string;
 }) {
   const { updateCash, removeCash } = usePortfolioStore();
@@ -116,7 +121,7 @@ function CashRow({
         <input
           value={pos.currency}
           onChange={(e) =>
-            updateCash(pos.currency, { currency: e.target.value.toUpperCase() })
+            updateCash(index, { currency: e.target.value.toUpperCase() })
           }
           placeholder="USD"
           className="w-20 h-7 px-2 text-xs font-mono uppercase rounded border border-input bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
@@ -128,7 +133,7 @@ function CashRow({
           value={pos.amount || ""}
           min={0}
           onChange={(e) =>
-            updateCash(pos.currency, { amount: Number(e.target.value) })
+            updateCash(index, { amount: Number(e.target.value) })
           }
           className="w-28 h-7 px-2 text-xs tabular-nums rounded border border-input bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
         />
@@ -149,7 +154,7 @@ function CashRow({
           max={100}
           step={0.1}
           onChange={(e) =>
-            updateCash(pos.currency, { targetPercent: Number(e.target.value) })
+            updateCash(index, { targetPercent: Number(e.target.value) })
           }
           className="w-16 h-7 px-2 text-xs tabular-nums rounded border border-input bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
         />
@@ -157,7 +162,7 @@ function CashRow({
       <DeltaCell delta={pos.delta} />
       <td className="px-2 py-2">
         <button
-          onClick={() => removeCash(pos.currency)}
+          onClick={() => removeCash(index)}
           className="h-7 w-7 flex items-center justify-center rounded hover:bg-destructive/10 hover:text-destructive transition-colors"
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -268,8 +273,8 @@ export function PortfolioTable() {
               </tr>
             </thead>
             <tbody>
-              {enrichedStocks.map((pos) => (
-                <StockRow key={pos.ticker} pos={pos} />
+              {enrichedStocks.map((pos, i) => (
+                <StockRow key={i} pos={pos} index={i} />
               ))}
               {portfolio.positions.length === 0 && (
                 <tr>
@@ -313,10 +318,11 @@ export function PortfolioTable() {
               </tr>
             </thead>
             <tbody>
-              {enrichedCash.map((pos) => (
+              {enrichedCash.map((pos, i) => (
                 <CashRow
-                  key={pos.currency}
+                  key={i}
                   pos={pos}
+                  index={i}
                   baseCurrency={baseCurrency}
                 />
               ))}

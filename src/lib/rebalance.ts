@@ -15,10 +15,6 @@ interface EnrichResult {
   rebalanceResult: RebalanceResult | null;
 }
 
-/**
- * Конвертирует сумму из валюты в базовую.
- * Если курс не найден — возвращает null.
- */
 function toBase(
   amount: number,
   currency: string,
@@ -31,9 +27,6 @@ function toBase(
   return amount * rate;
 }
 
-/**
- * Обогащает позиции текущими ценами и рассчитывает ребалансировку.
- */
 export function enrichPositions(
   portfolio: Portfolio,
   prices: PriceMap,
@@ -65,20 +58,15 @@ export function enrichPositions(
   // --- Enrich cash ---
   const enrichedCash: CashPositionEnriched[] = cash.map((c) => {
     const valueBase = toBase(c.amount, c.currency, baseCurrency, rates);
-    return {
-      ...c,
-      valueBase,
-      currentPercent: null,
-      delta: null,
-    };
+    return { ...c, valueBase, currentPercent: null, delta: null };
   });
 
   // --- Total portfolio value ---
-  const stockValues = enrichedStocks.map((s) => s.valueBase);
-  const cashValues = enrichedCash.map((c) => c.valueBase);
-  const allValues = [...stockValues, ...cashValues];
+  const allValues = [
+    ...enrichedStocks.map((s) => s.valueBase),
+    ...enrichedCash.map((c) => c.valueBase),
+  ];
 
-  // Если хотя бы одно значение null — не можем считать проценты
   if (allValues.some((v) => v == null)) {
     return { enrichedStocks, enrichedCash, rebalanceResult: null };
   }
@@ -94,21 +82,31 @@ export function enrichPositions(
     s.currentPercent = ((s.valueBase as number) / totalValueBase) * 100;
     s.delta = s.targetPercent - s.currentPercent;
   }
-
   for (const c of enrichedCash) {
     c.currentPercent = ((c.valueBase as number) / totalValueBase) * 100;
     c.delta = c.targetPercent - c.currentPercent;
   }
 
-  // --- Rebalance recommendations ---
+  // --- Portfolio Drift ---
+  // drift = 0.5 × Σ|currentPercent[i] - targetPercent[i]|
+  const sumAbsDelta = [
+    ...enrichedStocks.map((s) =>
+      Math.abs((s.currentPercent ?? 0) - s.targetPercent),
+    ),
+    ...enrichedCash.map((c) =>
+      Math.abs((c.currentPercent ?? 0) - c.targetPercent),
+    ),
+  ].reduce((acc, v) => acc + v, 0);
+  const drift = sumAbsDelta / 2;
+
+  // --- Stock recommendations (Math.floor — никогда не выходим за бюджет) ---
   const stocks: StockRecommendation[] = enrichedStocks.map((s) => {
     const targetValueBase = (s.targetPercent / 100) * totalValueBase;
     const price = s.price as number;
     const currency = s.currency as string;
-
-    // Переводим цену в базовую валюту для расчёта количества
     const priceBase = toBase(price, currency, baseCurrency, rates) as number;
-    const targetQuantity = Math.round(targetValueBase / priceBase);
+
+    const targetQuantity = Math.floor(targetValueBase / priceBase);
     const diff = targetQuantity - s.quantity;
     const tradeValueBase = diff * priceBase;
 
@@ -122,8 +120,40 @@ export function enrichPositions(
     };
   });
 
+  // --- Остаток после покупки акций ---
+  const allocatedToStocksBase = stocks.reduce((sum, s) => {
+    const priceData = prices[s.ticker];
+    if (!priceData) return sum;
+    const priceBase =
+      toBase(priceData.price, priceData.currency, baseCurrency, rates) ?? 0;
+    return sum + s.targetQuantity * priceBase;
+  }, 0);
+  const remainingBase = totalValueBase - allocatedToStocksBase;
+
+  // --- Cash recommendations ---
+  const totalCashTargetPercent = enrichedCash.reduce(
+    (s, c) => s + c.targetPercent,
+    0,
+  );
+
   const cashRecs: CashRecommendation[] = enrichedCash.map((c) => {
-    const targetValueBase = (c.targetPercent / 100) * totalValueBase;
+    let targetValueBase: number;
+
+    if (totalCashTargetPercent > 0) {
+      targetValueBase =
+        (c.targetPercent / totalCashTargetPercent) * remainingBase;
+    } else {
+      const totalCurrentCashBase = enrichedCash.reduce(
+        (s, cc) => s + (cc.valueBase as number),
+        0,
+      );
+      const share =
+        totalCurrentCashBase > 0
+          ? (c.valueBase as number) / totalCurrentCashBase
+          : 1 / enrichedCash.length;
+      targetValueBase = share * remainingBase;
+    }
+
     const rate = c.currency === baseCurrency ? 1 : (rates[c.currency] ?? 1);
     const targetAmount = targetValueBase / rate;
     const diff = targetAmount - c.amount;
@@ -139,10 +169,6 @@ export function enrichPositions(
   return {
     enrichedStocks,
     enrichedCash,
-    rebalanceResult: {
-      totalValueBase,
-      stocks,
-      cash: cashRecs,
-    },
+    rebalanceResult: { totalValueBase, drift, stocks, cash: cashRecs },
   };
 }

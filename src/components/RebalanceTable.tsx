@@ -48,6 +48,30 @@ function ActionBadge({ action }: { action: Action }) {
   );
 }
 
+function DriftBadge({ drift }: { drift: number }) {
+  const color =
+    drift < 5
+      ? "border-green-500 text-green-600 dark:text-green-400"
+      : drift < 10
+        ? "border-yellow-500 text-yellow-600 dark:text-yellow-400"
+        : "border-red-500 text-red-500";
+
+  const label =
+    drift < 5 ? "в норме" : drift < 10 ? "рассмотреть" : "ребалансировать";
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full border ${color}`}
+      title="Portfolio Drift — доля портфеля, которую нужно переложить для достижения целевых весов"
+    >
+      <span className="tabular-nums font-medium">
+        Drift {drift.toFixed(1)}%
+      </span>
+      <span className="opacity-60">{label}</span>
+    </span>
+  );
+}
+
 export function RebalanceTable() {
   const { rebalanceResult, portfolio, fetchStatus, fetchError } =
     usePortfolioStore();
@@ -78,15 +102,19 @@ export function RebalanceTable() {
     );
   }
 
-  const { stocks, cash, totalValueBase } = rebalanceResult;
+  const { stocks, cash, totalValueBase, drift } = rebalanceResult;
 
   return (
     <div className="space-y-4">
-      <div className="text-xs text-muted-foreground">
-        Итого:{" "}
-        <span className="text-foreground font-medium">
-          {fmt(totalValueBase, baseCurrency)}
-        </span>
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="text-xs text-muted-foreground">
+          Итого:{" "}
+          <span className="text-foreground font-medium">
+            {fmt(totalValueBase, baseCurrency)}
+          </span>
+        </div>
+        <DriftBadge drift={drift} />
       </div>
 
       {/* Stocks */}

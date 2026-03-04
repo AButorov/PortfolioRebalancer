@@ -25,35 +25,28 @@ interface PortfolioState {
   fetchError: string | null;
   lastUpdated: Date | null;
 
-  // Portfolio
   setPortfolio: (portfolio: Portfolio) => void;
   setBaseCurrency: (currency: string) => void;
 
-  // Stocks
   addStock: () => void;
-  updateStock: (ticker: string, position: Partial<StockPosition>) => void;
-  removeStock: (ticker: string) => void;
+  updateStock: (index: number, position: Partial<StockPosition>) => void;
+  removeStock: (index: number) => void;
 
-  // Cash
   addCash: () => void;
-  updateCash: (currency: string, position: Partial<CashPosition>) => void;
-  removeCash: (currency: string) => void;
+  updateCash: (index: number, position: Partial<CashPosition>) => void;
+  removeCash: (index: number) => void;
 
-  // External data
   setPrices: (prices: PriceMap) => void;
   setRates: (rates: RateMap) => void;
   setFetchStatus: (status: FetchStatus, error?: string) => void;
 
-  // Async fetch
   fetchAllPrices: () => Promise<void>;
   fetchAllRates: () => Promise<void>;
   refresh: () => Promise<void>;
 
-  // File I/O
   loadFromFile: (file: File) => Promise<void>;
   saveToFile: () => void;
 
-  // Internal
   computeEnriched: () => void;
 }
 
@@ -85,6 +78,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
       fetchStatus: "idle",
       fetchError: null,
     });
+    get().computeEnriched();
   },
 
   setBaseCurrency: (currency) => {
@@ -102,25 +96,26 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
         ],
       },
     }));
+    get().computeEnriched();
   },
 
-  updateStock: (ticker, updated) => {
+  updateStock: (index, updated) => {
     set((s) => ({
       portfolio: {
         ...s.portfolio,
-        positions: s.portfolio.positions.map((p) =>
-          p.ticker === ticker ? { ...p, ...updated } : p,
+        positions: s.portfolio.positions.map((p, i) =>
+          i === index ? { ...p, ...updated } : p,
         ),
       },
     }));
     get().computeEnriched();
   },
 
-  removeStock: (ticker) => {
+  removeStock: (index) => {
     set((s) => ({
       portfolio: {
         ...s.portfolio,
-        positions: s.portfolio.positions.filter((p) => p.ticker !== ticker),
+        positions: s.portfolio.positions.filter((_, i) => i !== index),
       },
     }));
     get().computeEnriched();
@@ -136,25 +131,26 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
         ],
       },
     }));
+    get().computeEnriched();
   },
 
-  updateCash: (currency, updated) => {
+  updateCash: (index, updated) => {
     set((s) => ({
       portfolio: {
         ...s.portfolio,
-        cash: s.portfolio.cash.map((c) =>
-          c.currency === currency ? { ...c, ...updated } : c,
+        cash: s.portfolio.cash.map((c, i) =>
+          i === index ? { ...c, ...updated } : c,
         ),
       },
     }));
     get().computeEnriched();
   },
 
-  removeCash: (currency) => {
+  removeCash: (index) => {
     set((s) => ({
       portfolio: {
         ...s.portfolio,
-        cash: s.portfolio.cash.filter((c) => c.currency !== currency),
+        cash: s.portfolio.cash.filter((_, i) => i !== index),
       },
     }));
     get().computeEnriched();
@@ -208,11 +204,33 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
   refresh: async () => {
     const { setFetchStatus, fetchAllPrices, fetchAllRates } = get();
     setFetchStatus("loading");
-    try {
-      await Promise.all([fetchAllPrices(), fetchAllRates()]);
+
+    // allSettled — акции и валюты обновляются независимо друг от друга
+    const [pricesResult, ratesResult] = await Promise.allSettled([
+      fetchAllPrices(),
+      fetchAllRates(),
+    ]);
+
+    const errors: string[] = [];
+    if (pricesResult.status === "rejected") {
+      errors.push(
+        pricesResult.reason instanceof Error
+          ? pricesResult.reason.message
+          : String(pricesResult.reason),
+      );
+    }
+    if (ratesResult.status === "rejected") {
+      errors.push(
+        ratesResult.reason instanceof Error
+          ? ratesResult.reason.message
+          : String(ratesResult.reason),
+      );
+    }
+
+    if (errors.length > 0) {
+      setFetchStatus("error", errors.join("; "));
+    } else {
       set({ fetchStatus: "success", lastUpdated: new Date() });
-    } catch (e) {
-      setFetchStatus("error", e instanceof Error ? e.message : String(e));
     }
   },
 
