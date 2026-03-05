@@ -187,7 +187,7 @@ src/
 
 ## Git
 
-Forgejo -> Github
+Forgejo -> Github -> Github Pages
 
 ## Лицензия
 
