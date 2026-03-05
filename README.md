@@ -185,6 +185,10 @@ src/
 
 ---
 
+## Git
+
+Forgejo -> Github
+
 ## Лицензия
 
 MIT
