@@ -8,10 +8,10 @@ function App() {
   const { t } = useSettingsStore();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Header />
 
-      <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-6">
           <section>
             <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
@@ -37,6 +37,21 @@ function App() {
           <RebalanceTable />
         </section>
       </main>
+
+      {/* Footer */}
+      <footer className="border-t py-4 mt-6">
+        <p className="text-center text-[11px] text-muted-foreground">
+          © {new Date().getFullYear()}{" "}
+          <a
+            href="https://standartsoftplus.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-foreground underline underline-offset-2 transition-colors"
+          >
+            StandartSoftPlus
+          </a>
+        </p>
+      </footer>
     </div>
   );
 }

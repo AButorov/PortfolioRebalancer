@@ -6,6 +6,7 @@ import {
   Database,
   Search,
   BookOpen,
+  Github,
 } from "lucide-react";
 import { useSettingsStore } from "@/store/settingsStore";
 
@@ -487,11 +488,33 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
           ))}
 
           {/* Footer */}
-          <div className="pt-2 border-t text-center text-[11px] text-muted-foreground">
-            Portfolio Rebalancer —{" "}
-            {lang === "ru"
-              ? "бесплатное приложение с открытым исходным кодом"
-              : "free open-source app"}
+          <div className="pt-4 border-t space-y-2">
+            {/* GitHub link */}
+            <div className="flex items-center justify-center gap-1.5">
+              <Github className="h-3.5 w-3.5 text-muted-foreground" />
+              <a
+                href="https://github.com/AButorov/PortfolioRebalancer"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+              >
+                {lang === "ru"
+                  ? "Исходный код на GitHub"
+                  : "Source code on GitHub"}
+              </a>
+            </div>
+            {/* Copyright */}
+            <p className="text-center text-[11px] text-muted-foreground">
+              © {new Date().getFullYear()}{" "}
+              <a
+                href="https://standartsoftplus.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-foreground underline underline-offset-2 transition-colors"
+              >
+                StandartSoftPlus
+              </a>
+            </p>
           </div>
         </div>
       </div>
