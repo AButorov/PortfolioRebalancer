@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronsUpDown,
   KeyRound,
+  AlertTriangle,
 } from "lucide-react";
 import { usePortfolioStore } from "@/store/portfolioStore";
 import { useSettingsStore } from "@/store/settingsStore";
@@ -125,6 +126,28 @@ function DriftBadge({ drift }: { drift: number }) {
   );
 }
 
+/** Предупреждение о некорректной сумме целевых процентов */
+function TargetSumWarning({ total }: { total: number }) {
+  const { t } = useSettingsStore();
+  const deviation = total - 100;
+
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full border border-orange-400 text-orange-500 dark:text-orange-400 cursor-default"
+      title={t.targetSumWarning(total, deviation)}
+    >
+      <AlertTriangle className="h-3 w-3 shrink-0" />
+      <span className="tabular-nums">
+        Σ {total.toFixed(1)}%{" "}
+        <span className="opacity-75">
+          ({deviation > 0 ? "+" : ""}
+          {deviation.toFixed(1)}%)
+        </span>
+      </span>
+    </span>
+  );
+}
+
 function SortIcon({
   field,
   sortField,
@@ -226,6 +249,13 @@ export function RebalanceTable() {
     }
   };
 
+  // Сумма целевых процентов — нужна для предупреждения
+  const totalTarget = [...portfolio.positions, ...portfolio.cash].reduce(
+    (s, p) => s + p.targetPercent,
+    0,
+  );
+  const targetOk = Math.abs(totalTarget - 100) < 0.01;
+
   if (fetchStatus === "loading") {
     return (
       <div className="flex items-center justify-center py-8 text-xs text-muted-foreground gap-2">
@@ -258,7 +288,7 @@ export function RebalanceTable() {
 
   return (
     <div className="space-y-4">
-      {/* Итого + дрейф */}
+      {/* Итого + предупреждение о процентах + дрейф */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="text-xs text-muted-foreground">
           {t.total}{" "}
@@ -266,7 +296,10 @@ export function RebalanceTable() {
             {fmtCurrency(totalValueBase, baseCurrency, t.locale)}
           </span>
         </div>
-        <DriftBadge drift={drift} />
+        <div className="flex items-center gap-2 flex-wrap">
+          {!targetOk && <TargetSumWarning total={totalTarget} />}
+          <DriftBadge drift={drift} />
+        </div>
       </div>
 
       {/* Таблица акций */}
