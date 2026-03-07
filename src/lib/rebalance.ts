@@ -15,6 +15,12 @@ interface EnrichResult {
   rebalanceResult: RebalanceResult | null;
 }
 
+/**
+ * Минимальный порог сделки — доля от стоимости портфеля.
+ * Если сделка меньше порога, позиция считается сбалансированной.
+ */
+const TRADE_THRESHOLD = 0.001; // 0.1 %
+
 function toBase(
   amount: number,
   currency: string,
@@ -88,7 +94,6 @@ export function enrichPositions(
   }
 
   // --- Portfolio Drift ---
-  // drift = 0.5 × Σ|currentPercent[i] - targetPercent[i]|
   const sumAbsDelta = [
     ...enrichedStocks.map((s) =>
       Math.abs((s.currentPercent ?? 0) - s.targetPercent),
@@ -99,16 +104,24 @@ export function enrichPositions(
   ].reduce((acc, v) => acc + v, 0);
   const drift = sumAbsDelta / 2;
 
-  // --- Stock recommendations (Math.floor — никогда не выходим за бюджет) ---
+  // --- Stock recommendations ---
   const stocks: StockRecommendation[] = enrichedStocks.map((s) => {
     const targetValueBase = (s.targetPercent / 100) * totalValueBase;
     const price = s.price as number;
     const currency = s.currency as string;
     const priceBase = toBase(price, currency, baseCurrency, rates) as number;
 
-    const targetQuantity = Math.floor(targetValueBase / priceBase);
-    const diff = targetQuantity - s.quantity;
-    const tradeValueBase = diff * priceBase;
+    const targetQuantityRaw = Math.floor(targetValueBase / priceBase);
+    let diff = targetQuantityRaw - s.quantity;
+    let targetQuantity = targetQuantityRaw;
+    let tradeValueBase: number | null = diff * priceBase;
+
+    // Фильтр шума: сделка < TRADE_THRESHOLD от портфеля → держать
+    if (Math.abs(tradeValueBase) / totalValueBase < TRADE_THRESHOLD) {
+      diff = 0;
+      targetQuantity = s.quantity;
+      tradeValueBase = 0;
+    }
 
     return {
       ticker: s.ticker,

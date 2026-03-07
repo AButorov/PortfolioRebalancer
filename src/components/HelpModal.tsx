@@ -127,7 +127,7 @@ const HELP_CONTENT = {
           },
           {
             n: "3",
-            text: "Убедитесь, что сумма всех целевых процентов равна 100% (индикатор Σ в верхнем правом углу таблицы).",
+            text: "Убедитесь, что сумма всех целевых процентов равна 100%. Индикатор Σ в правом верхнем углу таблицы показывает текущую сумму и отклонение — например, «Σ 110.0% (+10.0%)». Быстрый способ выровнять портфель по текущему состоянию: нажмите на значение в колонке «Факт %» — оно сразу скопируется в «Цель %» для этой позиции.",
           },
           {
             n: "4",
@@ -135,11 +135,11 @@ const HELP_CONTENT = {
           },
           {
             n: "5",
-            text: "В таблице «Ребалансировка» вы увидите рекомендации: сколько акций купить или продать, сколько кэша добавить или вывести.",
+            text: "В таблице «Ребалансировка» вы увидите рекомендации: сколько акций купить или продать, сколько кэша добавить или вывести. Если сумма целевых процентов не равна 100%, в этом блоке появится предупреждение — данные в этом случае носят информативный характер.",
           },
           {
             n: "6",
-            text: "Логика ребалансировки: сначала выполните операции «Продать», а затем на полученные средства — «Купить». Отсортируйте таблицу по колонке «Действие», нажав на её заголовок.",
+            text: "Логика ребалансировки: сначала выполните операции «Продать», а затем на полученные средства — «Купить». Мелкие сделки (менее 0.1% от стоимости портфеля) автоматически отмечаются как «Держать». Отсортируйте таблицу по колонке «Действие», нажав на её заголовок.",
           },
           {
             n: "7",
@@ -265,7 +265,7 @@ const HELP_CONTENT = {
           },
           {
             n: "3",
-            text: "Make sure all target percents sum to 100% (the Σ indicator in the top right of the table).",
+            text: "Make sure all target percents sum to 100%. The Σ badge in the top right of the table shows the current sum and deviation — e.g. 'Σ 110.0% (+10.0%)'. Quick way to align targets to current state: click any value in the 'Actual %' column — it will instantly copy to 'Target %' for that position.",
           },
           {
             n: "4",
@@ -273,11 +273,11 @@ const HELP_CONTENT = {
           },
           {
             n: "5",
-            text: "The Rebalancing table will show recommendations: how many shares to buy or sell, and how much cash to add or withdraw.",
+            text: "The Rebalancing table will show recommendations: how many shares to buy or sell, and how much cash to add or withdraw. If the target percent sum is not 100%, a warning will appear — the data in that case is informational only.",
           },
           {
             n: "6",
-            text: "Rebalancing logic: execute Sell orders first, then use the proceeds to Buy. Sort the table by the Action column by clicking its header.",
+            text: "Rebalancing order: execute Sell orders first, then use the proceeds to Buy. Small trades (less than 0.1% of portfolio value) are automatically marked as Hold. Sort the table by the Action column by clicking its header.",
           },
           {
             n: "7",

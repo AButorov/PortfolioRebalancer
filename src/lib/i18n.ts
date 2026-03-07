@@ -26,6 +26,8 @@ export interface Translations {
   currency: string;
   amount: string;
   inCurrency: (c: string) => string;
+  /** Подсказка к клику по «Факт %» */
+  copyPercentHint: string;
   // RebalanceTable
   loadingData: string;
   loadError: string;
@@ -43,6 +45,12 @@ export interface Translations {
   driftConsider: string;
   driftRebalance: string;
   driftTitle: string;
+  /**
+   * Текст тултипа при некорректной сумме целевых процентов.
+   * @param total — фактическая сумма (напр. 110)
+   * @param deviation — отклонение от 100 со знаком (напр. +10 или -5)
+   */
+  targetSumWarning: (total: number, deviation: number) => string;
   // PortfolioChart
   addPositionsHint: string;
   positions: string;
@@ -88,6 +96,7 @@ const ru: Translations = {
   currency: "Валюта",
   amount: "Сумма",
   inCurrency: (c) => `В ${c}`,
+  copyPercentHint: "Нажмите, чтобы скопировать в «Цель %»",
   loadingData: "Загрузка данных...",
   loadError: "Ошибка загрузки:",
   clickRefreshHint: "Нажмите «Обновить» чтобы загрузить котировки",
@@ -105,6 +114,10 @@ const ru: Translations = {
   driftRebalance: "ребалансировать",
   driftTitle:
     "Portfolio Drift — доля портфеля, которую нужно переложить для достижения целевых весов",
+  targetSumWarning: (total, deviation) =>
+    `Сумма целевых процентов: ${total.toFixed(2)}% (${deviation > 0 ? "+" : ""}${deviation.toFixed(2)}% от 100%).\n` +
+    `Данные ребалансировки носят информативный характер и могут быть некорректны.\n` +
+    `Скорректируйте целевые проценты так, чтобы их сумма равнялась 100%.`,
   addPositionsHint: "Добавьте позиции",
   positions: "позиций",
   actualVsTarget: "Факт vs цель",
@@ -149,6 +162,7 @@ const en: Translations = {
   currency: "Currency",
   amount: "Amount",
   inCurrency: (c) => `In ${c}`,
+  copyPercentHint: "Click to copy to Target %",
   loadingData: "Loading data...",
   loadError: "Load error:",
   clickRefreshHint: "Click Refresh to load quotes",
@@ -166,6 +180,10 @@ const en: Translations = {
   driftRebalance: "rebalance",
   driftTitle:
     "Portfolio Drift — share of the portfolio that needs to be reallocated to reach target weights",
+  targetSumWarning: (total, deviation) =>
+    `Target allocation sum: ${total.toFixed(2)}% (${deviation > 0 ? "+" : ""}${deviation.toFixed(2)}% from 100%).\n` +
+    `Rebalancing data is informational only and may be incorrect.\n` +
+    `Adjust target percentages so they sum to exactly 100%.`,
   addPositionsHint: "Add positions",
   positions: "positions",
   actualVsTarget: "Actual vs target",

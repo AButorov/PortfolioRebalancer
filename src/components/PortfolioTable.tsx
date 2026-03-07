@@ -32,8 +32,9 @@ function fmtPrice(
   }).format(value ?? 0);
 }
 
+/** 2 знака после запятой для точного копирования в целевой % */
 function fmtPct(value: number | null): string {
-  return (value ?? 0).toFixed(1) + "%";
+  return (value ?? 0).toFixed(2) + "%";
 }
 
 // ─── Дельта ────────────────────────────────────────────────────────────────
@@ -49,7 +50,7 @@ function DeltaCell({ delta }: { delta: number | null }) {
   return (
     <td className={`px-3 py-2 text-right text-xs tabular-nums ${color}`}>
       {val > 0 ? "+" : ""}
-      {val.toFixed(1)}%
+      {val.toFixed(2)}%
     </td>
   );
 }
@@ -70,6 +71,13 @@ function StockRow({
   const { updateStock, removeStock } = usePortfolioStore();
   const baseCurrency = usePortfolioStore((s) => s.portfolio.baseCurrency);
   const { t } = useSettingsStore();
+
+  /** Округляем до 2 знаков — столько же, сколько показываем */
+  const handleCopyPercent = () => {
+    if (pos.currentPercent == null) return;
+    const rounded = Math.round(pos.currentPercent * 100) / 100;
+    updateStock(index, { targetPercent: rounded });
+  };
 
   return (
     <tr className="border-b last:border-0 hover:bg-muted/30 transition-colors">
@@ -101,7 +109,16 @@ function StockRow({
       <td className="px-3 py-2 text-right text-xs tabular-nums">
         {fmtCurrency(pos.valueBase, baseCurrency, t.locale)}
       </td>
-      <td className="px-3 py-2 text-right text-xs tabular-nums text-muted-foreground">
+      {/* Клик по «Факт %» переносит значение в «Цель %» */}
+      <td
+        className={`px-3 py-2 text-right text-xs tabular-nums ${
+          pos.currentPercent != null
+            ? "cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors select-none"
+            : "text-muted-foreground"
+        }`}
+        title={pos.currentPercent != null ? t.copyPercentHint : undefined}
+        onClick={handleCopyPercent}
+      >
         {fmtPct(pos.currentPercent)}
       </td>
       <td className="px-3 py-2">
@@ -110,7 +127,7 @@ function StockRow({
           value={pos.targetPercent}
           min={0}
           max={100}
-          step={0.1}
+          step={0.01}
           onChange={(e) =>
             updateStock(index, { targetPercent: Number(e.target.value) })
           }
@@ -144,6 +161,12 @@ function CashRow({
   const { updateCash, removeCash } = usePortfolioStore();
   const { t } = useSettingsStore();
 
+  const handleCopyPercent = () => {
+    if (pos.currentPercent == null) return;
+    const rounded = Math.round(pos.currentPercent * 100) / 100;
+    updateCash(index, { targetPercent: rounded });
+  };
+
   return (
     <tr className="border-b last:border-0 hover:bg-muted/30 transition-colors">
       <td className="px-3 py-2">
@@ -171,7 +194,16 @@ function CashRow({
       <td className="px-3 py-2 text-right text-xs tabular-nums">
         {fmtCurrency(pos.valueBase, baseCurrency, t.locale)}
       </td>
-      <td className="px-3 py-2 text-right text-xs tabular-nums text-muted-foreground">
+      {/* Клик по «Факт %» переносит значение в «Цель %» */}
+      <td
+        className={`px-3 py-2 text-right text-xs tabular-nums ${
+          pos.currentPercent != null
+            ? "cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors select-none"
+            : "text-muted-foreground"
+        }`}
+        title={pos.currentPercent != null ? t.copyPercentHint : undefined}
+        onClick={handleCopyPercent}
+      >
         {fmtPct(pos.currentPercent)}
       </td>
       <td className="px-3 py-2">
@@ -180,7 +212,7 @@ function CashRow({
           value={pos.targetPercent}
           min={0}
           max={100}
-          step={0.1}
+          step={0.01}
           onChange={(e) =>
             updateCash(index, { targetPercent: Number(e.target.value) })
           }
@@ -218,6 +250,31 @@ function Th({
   );
 }
 
+// ─── Badge суммы целевых % ──────────────────────────────────────────────────
+
+function TargetSumBadge({ total }: { total: number }) {
+  const deviation = total - 100;
+  const isOk = Math.abs(deviation) < 0.01;
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border tabular-nums ${
+        isOk
+          ? "border-green-500 text-green-600 dark:text-green-400"
+          : "border-red-500 text-red-500"
+      }`}
+    >
+      <span>Σ {total.toFixed(1)}%</span>
+      {!isOk && (
+        <span className="opacity-75">
+          ({deviation > 0 ? "+" : ""}
+          {deviation.toFixed(1)}%)
+        </span>
+      )}
+    </span>
+  );
+}
+
 // ─── Основной компонент ──────────────────────────────────────────────────────
 
 export function PortfolioTable() {
@@ -236,7 +293,6 @@ export function PortfolioTable() {
     (s, p) => s + p.targetPercent,
     0,
   );
-  const targetOk = Math.abs(totalTarget - 100) < 0.01;
   const baseCurrency = portfolio.baseCurrency;
 
   return (
@@ -277,28 +333,13 @@ export function PortfolioTable() {
               }).format(rebalanceResult.totalValueBase)}
             </span>
           )}
-          <span
-            className={`text-xs px-2 py-0.5 rounded-full border ${
-              targetOk
-                ? "border-green-500 text-green-600 dark:text-green-400"
-                : "border-red-500 text-red-500"
-            }`}
-          >
-            Σ {totalTarget.toFixed(1)}%
-          </span>
+          <TargetSumBadge total={totalTarget} />
         </div>
       </div>
 
       {/* ── Таблица акций ─────────────────────────────────────────────────── */}
       {tab === "stocks" && (
         <div className="rounded-md border overflow-x-auto">
-          {/*
-            table-fixed + colgroup: заголовок и ячейки гарантированно
-            имеют одинаковую ширину, инпуты растянуты на w-full.
-
-            Тикер | Кол-во | Цена | Стоимость | Факт% | Цель% | Δ  | ✕
-            16%   | 12%    | 14%  | 17%       | 10%   | 12%   | 10%| 36px
-          */}
           <table className="w-full text-sm table-fixed">
             <colgroup>
               <col style={{ width: "16%" }} />
@@ -316,7 +357,15 @@ export function PortfolioTable() {
                 <Th right>{t.quantity}</Th>
                 <Th right>{t.price}</Th>
                 <Th right>{t.value}</Th>
-                <Th right>{t.actualPercent}</Th>
+                {/* Подсказка в заголовке, что колонка кликабельна */}
+                <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground cursor-default select-none">
+                  <span
+                    title={t.copyPercentHint}
+                    className="underline decoration-dotted decoration-muted-foreground/50"
+                  >
+                    {t.actualPercent}
+                  </span>
+                </th>
                 <Th right>{t.targetPercent}</Th>
                 <Th right>Δ</Th>
                 <th />
@@ -344,10 +393,6 @@ export function PortfolioTable() {
       {/* ── Таблица кэша ──────────────────────────────────────────────────── */}
       {tab === "cash" && (
         <div className="rounded-md border overflow-x-auto">
-          {/*
-            Валюта | Сумма | В базовой | Факт% | Цель% | Δ   | ✕
-            16%    | 18%   | 18%       | 12%   | 15%   | 12% | 36px
-          */}
           <table className="w-full text-sm table-fixed">
             <colgroup>
               <col style={{ width: "16%" }} />
@@ -363,7 +408,14 @@ export function PortfolioTable() {
                 <Th>{t.currency}</Th>
                 <Th right>{t.amount}</Th>
                 <Th right>{t.inCurrency(baseCurrency)}</Th>
-                <Th right>{t.actualPercent}</Th>
+                <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground cursor-default select-none">
+                  <span
+                    title={t.copyPercentHint}
+                    className="underline decoration-dotted decoration-muted-foreground/50"
+                  >
+                    {t.actualPercent}
+                  </span>
+                </th>
                 <Th right>{t.targetPercent}</Th>
                 <Th right>Δ</Th>
                 <th />
