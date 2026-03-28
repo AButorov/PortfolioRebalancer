@@ -1,6 +1,7 @@
 {
   "name": "Portfolio Rebalancer",
   "image": "oven/bun:1",
+  "runArgs": ["--dns", "192.168.1.202"],
   "features": {
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/sshd:1": {
