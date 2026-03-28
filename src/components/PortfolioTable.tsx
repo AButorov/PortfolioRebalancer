@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Wand2 } from "lucide-react";
 import { usePortfolioStore } from "@/store/portfolioStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import type { StockPositionEnriched, CashPositionEnriched } from "@/lib/types";
@@ -161,6 +161,9 @@ function CashRow({
   const { updateCash, removeCash } = usePortfolioStore();
   const { t } = useSettingsStore();
 
+  /** Позиция базовой валюты защищена от удаления */
+  const isBase = pos.currency === baseCurrency;
+
   const handleCopyPercent = () => {
     if (pos.currentPercent == null) return;
     const rounded = Math.round(pos.currentPercent * 100) / 100;
@@ -176,7 +179,9 @@ function CashRow({
             updateCash(index, { currency: e.target.value.toUpperCase() })
           }
           placeholder="USD"
-          className={`${inputCls} font-mono uppercase text-left`}
+          // Базовую валюту нельзя редактировать (она управляется через селект в Header)
+          readOnly={isBase}
+          className={`${inputCls} font-mono uppercase text-left ${isBase ? "opacity-50 cursor-not-allowed" : ""}`}
         />
       </td>
       <td className="px-3 py-2">
@@ -223,7 +228,13 @@ function CashRow({
       <td className="px-2 py-2 text-center">
         <button
           onClick={() => removeCash(index)}
-          className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-destructive/10 hover:text-destructive transition-colors"
+          disabled={isBase}
+          title={isBase ? undefined : undefined}
+          className={`h-7 w-7 inline-flex items-center justify-center rounded transition-colors ${
+            isBase
+              ? "opacity-20 cursor-not-allowed"
+              : "hover:bg-destructive/10 hover:text-destructive"
+          }`}
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
@@ -252,7 +263,19 @@ function Th({
 
 // ─── Badge суммы целевых % ──────────────────────────────────────────────────
 
-function TargetSumBadge({ total }: { total: number }) {
+function TargetSumBadge({
+  total,
+  canAdjust,
+  adjustPercent,
+  onAdjust,
+}: {
+  total: number;
+  /** Можно ли скорректировать через базовую валюту */
+  canAdjust: boolean;
+  /** Значение, до которого будет скорректирован % базовой валюты */
+  adjustPercent: number;
+  onAdjust: () => void;
+}) {
   const deviation = total - 100;
   const isOk = Math.abs(deviation) < 0.01;
 
@@ -271,6 +294,19 @@ function TargetSumBadge({ total }: { total: number }) {
           {deviation.toFixed(1)}%)
         </span>
       )}
+      {/* Кнопка коррекции — показывается только когда есть отклонение и коррекция возможна */}
+      {!isOk && canAdjust && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onAdjust();
+          }}
+          title={`→ ${adjustPercent.toFixed(2)}%`}
+          className="ml-0.5 h-4 w-4 inline-flex items-center justify-center rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors shrink-0"
+        >
+          <Wand2 className="h-3 w-3" />
+        </button>
+      )}
     </span>
   );
 }
@@ -286,6 +322,7 @@ export function PortfolioTable() {
     addStock,
     addCash,
     rebalanceResult,
+    adjustBaseCurrencyPercent,
   } = usePortfolioStore();
   const { t } = useSettingsStore();
 
@@ -294,6 +331,19 @@ export function PortfolioTable() {
     0,
   );
   const baseCurrency = portfolio.baseCurrency;
+
+  // Определяем, можно ли скорректировать через базовую валюту:
+  // сумма ВСЕХ позиций кроме базовой валюты должна быть < 100%
+  const baseCashIndex = portfolio.cash.findIndex(
+    (c) => c.currency === baseCurrency,
+  );
+  const sumWithoutBase =
+    portfolio.positions.reduce((s, p) => s + p.targetPercent, 0) +
+    portfolio.cash
+      .filter((_, i) => i !== baseCashIndex)
+      .reduce((s, c) => s + c.targetPercent, 0);
+  const adjustPercent = Math.round((100 - sumWithoutBase) * 100) / 100;
+  const canAdjust = sumWithoutBase < 100 && Math.abs(totalTarget - 100) >= 0.01;
 
   return (
     <div className="space-y-3">
@@ -333,7 +383,12 @@ export function PortfolioTable() {
               }).format(rebalanceResult.totalValueBase)}
             </span>
           )}
-          <TargetSumBadge total={totalTarget} />
+          <TargetSumBadge
+            total={totalTarget}
+            canAdjust={canAdjust}
+            adjustPercent={adjustPercent}
+            onAdjust={adjustBaseCurrencyPercent}
+          />
         </div>
       </div>
 

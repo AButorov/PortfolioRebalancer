@@ -123,11 +123,11 @@ const HELP_CONTENT = {
           },
           {
             n: "2",
-            text: "Добавьте наличные на вкладке «Кэш» — укажите валюту, сумму и целевой процент.",
+            text: "Добавьте наличные на вкладке «Кэш» — укажите валюту, сумму и целевой процент. Позиция базовой валюты присутствует всегда и не может быть удалена — она служит буфером для дробного остатка.",
           },
           {
             n: "3",
-            text: "Убедитесь, что сумма всех целевых процентов равна 100%. Индикатор Σ в правом верхнем углу таблицы показывает текущую сумму и отклонение — например, «Σ 110.0% (+10.0%)». Быстрый способ выровнять портфель по текущему состоянию: нажмите на значение в колонке «Факт %» — оно сразу скопируется в «Цель %» для этой позиции.",
+            text: "Убедитесь, что сумма всех целевых процентов равна 100%. Индикатор Σ в правом верхнем углу таблицы показывает текущую сумму и отклонение — например, «Σ 99.9% (−0.1%)». Если сумма меньше 100% и остаток можно разместить в базовой валюте, рядом с индикатором появится кнопка 🪄 — нажмите её, чтобы автоматически скорректировать целевой процент базовой валюты до нужного значения. Быстрый способ выровнять портфель по текущему состоянию: нажмите на значение в колонке «Факт %» — оно сразу скопируется в «Цель %» для этой позиции.",
           },
           {
             n: "4",
@@ -261,11 +261,11 @@ const HELP_CONTENT = {
           },
           {
             n: "2",
-            text: "Add cash in the Cash tab — enter the currency, amount, and target percent.",
+            text: "Add cash in the Cash tab — enter the currency, amount, and target percent. The base currency position is always present and cannot be deleted — it acts as a buffer for fractional remainders.",
           },
           {
             n: "3",
-            text: "Make sure all target percents sum to 100%. The Σ badge in the top right of the table shows the current sum and deviation — e.g. 'Σ 110.0% (+10.0%)'. Quick way to align targets to current state: click any value in the 'Actual %' column — it will instantly copy to 'Target %' for that position.",
+            text: "Make sure all target percents sum to 100%. The Σ badge in the top right of the table shows the current sum and deviation — e.g. 'Σ 99.9% (−0.1%)'. If the sum is below 100% and the remainder can be placed in the base currency, a 🪄 button will appear next to the badge — click it to automatically adjust the base currency target percent to the required value. Quick way to align targets to current state: click any value in the 'Actual %' column — it will instantly copy to 'Target %' for that position.",
           },
           {
             n: "4",

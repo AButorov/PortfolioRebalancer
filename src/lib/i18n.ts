@@ -28,6 +28,12 @@ export interface Translations {
   inCurrency: (c: string) => string;
   /** Подсказка к клику по «Факт %» */
   copyPercentHint: string;
+  /**
+   * Tooltip кнопки коррекции целевого % базовой валюты.
+   * @param currency — базовая валюта (напр. USD)
+   * @param percent  — значение, до которого будет скорректирован % (напр. 5.23)
+   */
+  adjustBaseCurrencyTitle: (currency: string, percent: number) => string;
   // RebalanceTable
   loadingData: string;
   loadError: string;
@@ -97,6 +103,10 @@ const ru: Translations = {
   amount: "Сумма",
   inCurrency: (c) => `В ${c}`,
   copyPercentHint: "Нажмите, чтобы скопировать в «Цель %»",
+  adjustBaseCurrencyTitle: (currency, percent) =>
+    `Скорректировать целевой % ${currency} до ${percent.toFixed(2)}%\n` +
+    `(100% − сумма остальных позиций).\n` +
+    `Дробный остаток будет добавлен в базовую валюту.`,
   loadingData: "Загрузка данных...",
   loadError: "Ошибка загрузки:",
   clickRefreshHint: "Нажмите «Обновить» чтобы загрузить котировки",
@@ -163,6 +173,10 @@ const en: Translations = {
   amount: "Amount",
   inCurrency: (c) => `In ${c}`,
   copyPercentHint: "Click to copy to Target %",
+  adjustBaseCurrencyTitle: (currency, percent) =>
+    `Adjust ${currency} target % to ${percent.toFixed(2)}%\n` +
+    `(100% − sum of all other positions).\n` +
+    `The fractional remainder will be allocated to the base currency.`,
   loadingData: "Loading data...",
   loadError: "Load error:",
   clickRefreshHint: "Click Refresh to load quotes",

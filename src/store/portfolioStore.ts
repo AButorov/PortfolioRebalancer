@@ -25,6 +25,28 @@ type PortfolioFile = Portfolio & {
   priceMode?: PriceMode;
 };
 
+// ─── Вспомогательная функция ─────────────────────────────────────────────────
+
+/**
+ * Гарантирует наличие позиции базовой валюты в cash-списке.
+ * Если позиция отсутствует — добавляет с amount=0, targetPercent=0.
+ */
+function ensureBaseCurrencyExists(portfolio: Portfolio): Portfolio {
+  const exists = portfolio.cash.some(
+    (c) => c.currency === portfolio.baseCurrency,
+  );
+  if (exists) return portfolio;
+  return {
+    ...portfolio,
+    cash: [
+      ...portfolio.cash,
+      { currency: portfolio.baseCurrency, amount: 0, targetPercent: 0 },
+    ],
+  };
+}
+
+// ─── Интерфейс стора ─────────────────────────────────────────────────────────
+
 interface PortfolioState {
   portfolio: Portfolio;
   enrichedStocks: StockPositionEnriched[];
@@ -48,6 +70,10 @@ interface PortfolioState {
 
   addCash: () => void;
   updateCash: (index: number, position: Partial<CashPosition>) => void;
+  /**
+   * Удаляет cash-позицию по индексу.
+   * Позицию базовой валюты удалить нельзя — вызов будет проигнорирован.
+   */
   removeCash: (index: number) => void;
 
   setPrices: (prices: PriceMap) => void;
@@ -56,6 +82,15 @@ interface PortfolioState {
 
   /** Сохраняет ключ в store и localStorage */
   setFinnhubApiKey: (key: string) => void;
+
+  /**
+   * Корректирует targetPercent позиции базовой валюты так, чтобы
+   * сумма всех targetPercent стала ровно 100%.
+   *
+   * Условие активности: сумма targetPercent всех позиций КРОМЕ базовой валюты < 100%.
+   * Если позиция базовой валюты отсутствует — создаётся автоматически (amount=0).
+   */
+  adjustBaseCurrencyPercent: () => void;
 
   fetchAllPrices: () => Promise<void>;
   fetchAllRates: () => Promise<void>;
@@ -70,7 +105,7 @@ interface PortfolioState {
 const defaultPortfolio: Portfolio = {
   baseCurrency: "USD",
   positions: [],
-  cash: [],
+  cash: [{ currency: "USD", amount: 0, targetPercent: 0 }],
 };
 
 export const usePortfolioStore = create<PortfolioState>((set, get) => ({
@@ -86,8 +121,10 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
   finnhubApiKey: localStorage.getItem(LS_KEY) ?? "",
 
   setPortfolio: (portfolio) => {
+    // Гарантируем наличие позиции базовой валюты
+    const guaranteed = ensureBaseCurrencyExists(portfolio);
     set({
-      portfolio,
+      portfolio: guaranteed,
       prices: {},
       rates: {},
       rebalanceResult: null,
@@ -100,7 +137,10 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
   },
 
   setBaseCurrency: (currency) => {
-    set((s) => ({ portfolio: { ...s.portfolio, baseCurrency: currency } }));
+    set((s) => {
+      const updated = { ...s.portfolio, baseCurrency: currency };
+      return { portfolio: ensureBaseCurrencyExists(updated) };
+    });
     get().computeEnriched();
   },
 
@@ -170,12 +210,47 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
   },
 
   removeCash: (index) => {
+    const { portfolio } = get();
+    const target = portfolio.cash[index];
+    // Позицию базовой валюты нельзя удалить
+    if (!target || target.currency === portfolio.baseCurrency) return;
+
     set((s) => ({
       portfolio: {
         ...s.portfolio,
         cash: s.portfolio.cash.filter((_, i) => i !== index),
       },
     }));
+    get().computeEnriched();
+  },
+
+  adjustBaseCurrencyPercent: () => {
+    const { portfolio } = get();
+    const { baseCurrency } = portfolio;
+
+    let cash = [...portfolio.cash];
+    let baseCashIndex = cash.findIndex((c) => c.currency === baseCurrency);
+
+    // Если позиции нет — создаём
+    if (baseCashIndex === -1) {
+      cash = [...cash, { currency: baseCurrency, amount: 0, targetPercent: 0 }];
+      baseCashIndex = cash.length - 1;
+    }
+
+    // Сумма всех процентов, кроме позиции базовой валюты
+    const sumOthers =
+      portfolio.positions.reduce((s, p) => s + p.targetPercent, 0) +
+      cash
+        .filter((_, i) => i !== baseCashIndex)
+        .reduce((s, c) => s + c.targetPercent, 0);
+
+    // Защита: если остаток отрицательный — ничего не делаем
+    if (sumOthers >= 100) return;
+
+    const newPercent = Math.round((100 - sumOthers) * 100) / 100;
+    cash[baseCashIndex] = { ...cash[baseCashIndex], targetPercent: newPercent };
+
+    set((s) => ({ portfolio: { ...s.portfolio, cash } }));
     get().computeEnriched();
   },
 
