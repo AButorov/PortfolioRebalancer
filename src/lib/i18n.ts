@@ -34,6 +34,10 @@ export interface Translations {
    * @param percent  — значение, до которого будет скорректирован % (напр. 5.23)
    */
   adjustBaseCurrencyTitle: (currency: string, percent: number) => string;
+  /** Заголовок кнопки заметки */
+  note: string;
+  /** Плейсхолдер поля заметки */
+  notePlaceholder: string;
   // RebalanceTable
   loadingData: string;
   loadError: string;
@@ -107,6 +111,8 @@ const ru: Translations = {
     `Скорректировать целевой % ${currency} до ${percent.toFixed(2)}%\n` +
     `(100% − сумма остальных позиций).\n` +
     `Дробный остаток будет добавлен в базовую валюту.`,
+  note: "Заметка",
+  notePlaceholder: "Введите заметку к позиции в свободной форме...",
   loadingData: "Загрузка данных...",
   loadError: "Ошибка загрузки:",
   clickRefreshHint: "Нажмите «Обновить» чтобы загрузить котировки",
@@ -177,6 +183,8 @@ const en: Translations = {
     `Adjust ${currency} target % to ${percent.toFixed(2)}%\n` +
     `(100% − sum of all other positions).\n` +
     `The fractional remainder will be allocated to the base currency.`,
+  note: "Note",
+  notePlaceholder: "Enter a free-form note for this position...",
   loadingData: "Loading data...",
   loadError: "Load error:",
   clickRefreshHint: "Click Refresh to load quotes",
