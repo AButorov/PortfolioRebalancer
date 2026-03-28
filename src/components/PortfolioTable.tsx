@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trash2, Plus, Wand2 } from "lucide-react";
+import { Trash2, Plus, Wand2, StickyNote } from "lucide-react";
 import { usePortfolioStore } from "@/store/portfolioStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import type { StockPositionEnriched, CashPositionEnriched } from "@/lib/types";
@@ -68,9 +68,12 @@ function StockRow({
   pos: StockPositionEnriched;
   index: number;
 }) {
+  const [showNote, setShowNote] = useState(false);
   const { updateStock, removeStock } = usePortfolioStore();
   const baseCurrency = usePortfolioStore((s) => s.portfolio.baseCurrency);
   const { t } = useSettingsStore();
+
+  const hasNote = Boolean(pos.note?.trim());
 
   /** Округляем до 2 знаков — столько же, сколько показываем */
   const handleCopyPercent = () => {
@@ -80,70 +83,98 @@ function StockRow({
   };
 
   return (
-    <tr className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-      <td className="px-3 py-2">
-        <input
-          value={pos.ticker}
-          onChange={(e) =>
-            updateStock(index, { ticker: e.target.value.toUpperCase() })
-          }
-          placeholder="AAPL"
-          className={`${inputCls} font-mono uppercase text-left`}
-        />
-      </td>
-      <td className="px-3 py-2">
-        <input
-          type="number"
-          value={pos.quantity}
-          min={0}
-          step={1}
-          onChange={(e) =>
-            updateStock(index, { quantity: Number(e.target.value) })
-          }
-          className={`${inputCls} text-right`}
-        />
-      </td>
-      <td className="px-3 py-2 text-right text-xs tabular-nums text-muted-foreground">
-        {fmtPrice(pos.price, pos.currency ?? "USD", t.locale)}
-      </td>
-      <td className="px-3 py-2 text-right text-xs tabular-nums">
-        {fmtCurrency(pos.valueBase, baseCurrency, t.locale)}
-      </td>
-      {/* Клик по «Факт %» переносит значение в «Цель %» */}
-      <td
-        className={`px-3 py-2 text-right text-xs tabular-nums ${
-          pos.currentPercent != null
-            ? "cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors select-none"
-            : "text-muted-foreground"
-        }`}
-        title={pos.currentPercent != null ? t.copyPercentHint : undefined}
-        onClick={handleCopyPercent}
-      >
-        {fmtPct(pos.currentPercent)}
-      </td>
-      <td className="px-3 py-2">
-        <input
-          type="number"
-          value={pos.targetPercent}
-          min={0}
-          max={100}
-          step={0.01}
-          onChange={(e) =>
-            updateStock(index, { targetPercent: Number(e.target.value) })
-          }
-          className={`${inputCls} text-right`}
-        />
-      </td>
-      <DeltaCell delta={pos.delta} />
-      <td className="px-2 py-2 text-center">
-        <button
-          onClick={() => removeStock(index)}
-          className="h-7 w-7 inline-flex items-center justify-center rounded hover:bg-destructive/10 hover:text-destructive transition-colors"
+    <>
+      <tr className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+        <td className="px-3 py-2">
+          <input
+            value={pos.ticker}
+            onChange={(e) =>
+              updateStock(index, { ticker: e.target.value.toUpperCase() })
+            }
+            placeholder="AAPL"
+            className={`${inputCls} font-mono uppercase text-left`}
+          />
+        </td>
+        <td className="px-3 py-2">
+          <input
+            type="number"
+            value={pos.quantity}
+            min={0}
+            step={1}
+            onChange={(e) =>
+              updateStock(index, { quantity: Number(e.target.value) })
+            }
+            className={`${inputCls} text-right`}
+          />
+        </td>
+        <td className="px-3 py-2 text-right text-xs tabular-nums text-muted-foreground">
+          {fmtPrice(pos.price, pos.currency ?? "USD", t.locale)}
+        </td>
+        <td className="px-3 py-2 text-right text-xs tabular-nums">
+          {fmtCurrency(pos.valueBase, baseCurrency, t.locale)}
+        </td>
+        {/* Клик по «Факт %» переносит значение в «Цель %» */}
+        <td
+          className={`px-3 py-2 text-right text-xs tabular-nums ${
+            pos.currentPercent != null
+              ? "cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors select-none"
+              : "text-muted-foreground"
+          }`}
+          title={pos.currentPercent != null ? t.copyPercentHint : undefined}
+          onClick={handleCopyPercent}
         >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
-      </td>
-    </tr>
+          {fmtPct(pos.currentPercent)}
+        </td>
+        <td className="px-3 py-2">
+          <input
+            type="number"
+            value={pos.targetPercent}
+            min={0}
+            max={100}
+            step={0.01}
+            onChange={(e) =>
+              updateStock(index, { targetPercent: Number(e.target.value) })
+            }
+            className={`${inputCls} text-right`}
+          />
+        </td>
+        <DeltaCell delta={pos.delta} />
+        <td className="px-1 py-2">
+          <div className="flex items-center justify-center gap-0.5">
+            <button
+              onClick={() => setShowNote((v) => !v)}
+              title={t.note}
+              className={`h-7 w-6 inline-flex items-center justify-center rounded transition-colors ${
+                hasNote
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              } ${showNote ? "bg-muted" : "hover:bg-muted/50"}`}
+            >
+              <StickyNote className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => removeStock(index)}
+              className="h-7 w-6 inline-flex items-center justify-center rounded hover:bg-destructive/10 hover:text-destructive transition-colors"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </td>
+      </tr>
+      {showNote && (
+        <tr className="border-b bg-muted/20">
+          <td colSpan={8} className="px-3 pb-2 pt-1">
+            <textarea
+              value={pos.note ?? ""}
+              onChange={(e) => updateStock(index, { note: e.target.value })}
+              placeholder={t.notePlaceholder}
+              rows={2}
+              className="w-full text-xs px-2 py-1.5 rounded border border-input bg-background resize-none focus:outline-none focus:ring-1 focus:ring-ring text-foreground placeholder:text-muted-foreground"
+            />
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 
@@ -158,11 +189,13 @@ function CashRow({
   index: number;
   baseCurrency: string;
 }) {
+  const [showNote, setShowNote] = useState(false);
   const { updateCash, removeCash } = usePortfolioStore();
   const { t } = useSettingsStore();
 
   /** Позиция базовой валюты защищена от удаления */
   const isBase = pos.currency === baseCurrency;
+  const hasNote = Boolean(pos.note?.trim());
 
   const handleCopyPercent = () => {
     if (pos.currentPercent == null) return;
@@ -171,75 +204,102 @@ function CashRow({
   };
 
   return (
-    <tr className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-      <td className="px-3 py-2">
-        <input
-          value={pos.currency}
-          onChange={(e) =>
-            updateCash(index, { currency: e.target.value.toUpperCase() })
-          }
-          placeholder="USD"
-          // Базовую валюту нельзя редактировать (она управляется через селект в Header)
-          readOnly={isBase}
-          className={`${inputCls} font-mono uppercase text-left ${isBase ? "opacity-50 cursor-not-allowed" : ""}`}
-        />
-      </td>
-      <td className="px-3 py-2">
-        <input
-          type="number"
-          value={pos.amount}
-          min={0}
-          step={0.01}
-          onChange={(e) =>
-            updateCash(index, { amount: Number(e.target.value) })
-          }
-          className={`${inputCls} text-right`}
-        />
-      </td>
-      <td className="px-3 py-2 text-right text-xs tabular-nums">
-        {fmtCurrency(pos.valueBase, baseCurrency, t.locale)}
-      </td>
-      {/* Клик по «Факт %» переносит значение в «Цель %» */}
-      <td
-        className={`px-3 py-2 text-right text-xs tabular-nums ${
-          pos.currentPercent != null
-            ? "cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors select-none"
-            : "text-muted-foreground"
-        }`}
-        title={pos.currentPercent != null ? t.copyPercentHint : undefined}
-        onClick={handleCopyPercent}
-      >
-        {fmtPct(pos.currentPercent)}
-      </td>
-      <td className="px-3 py-2">
-        <input
-          type="number"
-          value={pos.targetPercent}
-          min={0}
-          max={100}
-          step={0.01}
-          onChange={(e) =>
-            updateCash(index, { targetPercent: Number(e.target.value) })
-          }
-          className={`${inputCls} text-right`}
-        />
-      </td>
-      <DeltaCell delta={pos.delta} />
-      <td className="px-2 py-2 text-center">
-        <button
-          onClick={() => removeCash(index)}
-          disabled={isBase}
-          title={isBase ? undefined : undefined}
-          className={`h-7 w-7 inline-flex items-center justify-center rounded transition-colors ${
-            isBase
-              ? "opacity-20 cursor-not-allowed"
-              : "hover:bg-destructive/10 hover:text-destructive"
+    <>
+      <tr className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+        <td className="px-3 py-2">
+          <input
+            value={pos.currency}
+            onChange={(e) =>
+              updateCash(index, { currency: e.target.value.toUpperCase() })
+            }
+            placeholder="USD"
+            // Базовую валюту нельзя редактировать (она управляется через селект в Header)
+            readOnly={isBase}
+            className={`${inputCls} font-mono uppercase text-left ${isBase ? "opacity-50 cursor-not-allowed" : ""}`}
+          />
+        </td>
+        <td className="px-3 py-2">
+          <input
+            type="number"
+            value={pos.amount}
+            min={0}
+            step={0.01}
+            onChange={(e) =>
+              updateCash(index, { amount: Number(e.target.value) })
+            }
+            className={`${inputCls} text-right`}
+          />
+        </td>
+        <td className="px-3 py-2 text-right text-xs tabular-nums">
+          {fmtCurrency(pos.valueBase, baseCurrency, t.locale)}
+        </td>
+        {/* Клик по «Факт %» переносит значение в «Цель %» */}
+        <td
+          className={`px-3 py-2 text-right text-xs tabular-nums ${
+            pos.currentPercent != null
+              ? "cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors select-none"
+              : "text-muted-foreground"
           }`}
+          title={pos.currentPercent != null ? t.copyPercentHint : undefined}
+          onClick={handleCopyPercent}
         >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
-      </td>
-    </tr>
+          {fmtPct(pos.currentPercent)}
+        </td>
+        <td className="px-3 py-2">
+          <input
+            type="number"
+            value={pos.targetPercent}
+            min={0}
+            max={100}
+            step={0.01}
+            onChange={(e) =>
+              updateCash(index, { targetPercent: Number(e.target.value) })
+            }
+            className={`${inputCls} text-right`}
+          />
+        </td>
+        <DeltaCell delta={pos.delta} />
+        <td className="px-1 py-2">
+          <div className="flex items-center justify-center gap-0.5">
+            <button
+              onClick={() => setShowNote((v) => !v)}
+              title={t.note}
+              className={`h-7 w-6 inline-flex items-center justify-center rounded transition-colors ${
+                hasNote
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              } ${showNote ? "bg-muted" : "hover:bg-muted/50"}`}
+            >
+              <StickyNote className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => removeCash(index)}
+              disabled={isBase}
+              className={`h-7 w-6 inline-flex items-center justify-center rounded transition-colors ${
+                isBase
+                  ? "opacity-20 cursor-not-allowed"
+                  : "hover:bg-destructive/10 hover:text-destructive"
+              }`}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </td>
+      </tr>
+      {showNote && (
+        <tr className="border-b bg-muted/20">
+          <td colSpan={7} className="px-3 pb-2 pt-1">
+            <textarea
+              value={pos.note ?? ""}
+              onChange={(e) => updateCash(index, { note: e.target.value })}
+              placeholder={t.notePlaceholder}
+              rows={2}
+              className="w-full text-xs px-2 py-1.5 rounded border border-input bg-background resize-none focus:outline-none focus:ring-1 focus:ring-ring text-foreground placeholder:text-muted-foreground"
+            />
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 
@@ -398,13 +458,13 @@ export function PortfolioTable() {
           <table className="w-full text-sm table-fixed">
             <colgroup>
               <col style={{ width: "16%" }} />
-              <col style={{ width: "12%" }} />
-              <col style={{ width: "14%" }} />
-              <col style={{ width: "17%" }} />
+              <col style={{ width: "11%" }} />
+              <col style={{ width: "13%" }} />
+              <col style={{ width: "16%" }} />
               <col style={{ width: "10%" }} />
-              <col style={{ width: "12%" }} />
+              <col style={{ width: "11%" }} />
               <col style={{ width: "10%" }} />
-              <col style={{ width: "36px" }} />
+              <col style={{ width: "52px" }} />
             </colgroup>
             <thead>
               <tr className="border-b bg-muted/50">
@@ -451,12 +511,12 @@ export function PortfolioTable() {
           <table className="w-full text-sm table-fixed">
             <colgroup>
               <col style={{ width: "16%" }} />
-              <col style={{ width: "18%" }} />
-              <col style={{ width: "18%" }} />
+              <col style={{ width: "17%" }} />
+              <col style={{ width: "17%" }} />
               <col style={{ width: "12%" }} />
-              <col style={{ width: "15%" }} />
-              <col style={{ width: "12%" }} />
-              <col style={{ width: "36px" }} />
+              <col style={{ width: "14%" }} />
+              <col style={{ width: "11%" }} />
+              <col style={{ width: "52px" }} />
             </colgroup>
             <thead>
               <tr className="border-b bg-muted/50">

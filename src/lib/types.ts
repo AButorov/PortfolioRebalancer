@@ -4,12 +4,14 @@ export interface StockPosition {
   ticker: string;
   quantity: number;
   targetPercent: number;
+  note?: string;
 }
 
 export interface CashPosition {
   currency: string;
   amount: number;
   targetPercent: number;
+  note?: string;
 }
 
 export interface Portfolio {

@@ -119,11 +119,11 @@ const HELP_CONTENT = {
         steps: [
           {
             n: "1",
-            text: "Добавьте позиции на вкладке «Акции» — введите тикер, количество и целевой процент.",
+            text: "Добавьте позиции на вкладке «Акции» — введите тикер, количество и целевой процент. Нажмите иконку 📝 рядом с любой позицией, чтобы добавить заметку в свободной форме — торговый план, условия входа или любую другую информацию. Заметки сохраняются в JSON-файл.",
           },
           {
             n: "2",
-            text: "Добавьте наличные на вкладке «Кэш» — укажите валюту, сумму и целевой процент. Позиция базовой валюты присутствует всегда и не может быть удалена — она служит буфером для дробного остатка.",
+            text: "Добавьте наличные на вкладке «Кэш» — укажите валюту, сумму и целевой процент. Позиция базовой валюты присутствует всегда и не может быть удалена — она служит буфером для дробного остатка. К позициям кэша также можно добавлять заметки.",
           },
           {
             n: "3",
@@ -143,7 +143,7 @@ const HELP_CONTENT = {
           },
           {
             n: "7",
-            text: "Сохраните портфель кнопкой «Сохранить» — JSON-файл сохранится на ваш компьютер. При следующем открытии загрузите его кнопкой «Загрузить».",
+            text: "Сохраните портфель кнопкой «Сохранить» — JSON-файл сохранится на ваш компьютер. Все заметки к позициям сохраняются вместе с портфелем. При следующем открытии загрузите файл кнопкой «Загрузить».",
           },
         ],
       },
@@ -257,11 +257,11 @@ const HELP_CONTENT = {
         steps: [
           {
             n: "1",
-            text: "Add positions in the Stocks tab — enter the ticker, quantity, and target percent.",
+            text: "Add positions in the Stocks tab — enter the ticker, quantity, and target percent. Click the 📝 icon next to any position to add a free-form note — a trading plan, entry conditions, or any other context. Notes are saved to the JSON file.",
           },
           {
             n: "2",
-            text: "Add cash in the Cash tab — enter the currency, amount, and target percent. The base currency position is always present and cannot be deleted — it acts as a buffer for fractional remainders.",
+            text: "Add cash in the Cash tab — enter the currency, amount, and target percent. The base currency position is always present and cannot be deleted — it acts as a buffer for fractional remainders. Notes can also be added to cash positions.",
           },
           {
             n: "3",
@@ -281,7 +281,7 @@ const HELP_CONTENT = {
           },
           {
             n: "7",
-            text: "Save your portfolio with the Save button — a JSON file will be downloaded. Next time, load it with the Load button.",
+            text: "Save your portfolio with the Save button — a JSON file will be downloaded. All position notes are saved together with the portfolio. Next time, load it with the Load button.",
           },
         ],
       },
